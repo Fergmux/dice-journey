@@ -15,7 +15,6 @@ dist-ssr
 # Electron
 dist-electron
 release
-build
 
 # Editor directories and files
 .vscode/*
