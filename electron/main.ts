@@ -8,6 +8,9 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Set app name (shows in macOS menu bar)
+app.setName('Dice Journey');
+
 // The built directory structure
 //
 // ├─┬─┬ dist
@@ -33,7 +36,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(PUBLIC_PATH, 'vite.svg'),
+    icon: path.join(__dirname, '../build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
