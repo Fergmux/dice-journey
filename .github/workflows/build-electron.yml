@@ -3,10 +3,8 @@ name: Build Electron App
 on:
   # Manual trigger from GitHub Actions tab
   workflow_dispatch:
-  # Build on push to main
+  # Build only when a version tag is pushed
   push:
-    branches:
-      - main
     tags:
       - "v*"
 
@@ -27,9 +25,7 @@ jobs:
         run: npm ci
 
       - name: Build Electron app for macOS
-        run: npm run electron:build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build && npm run electron:build-main && electron-builder --mac --publish never
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -56,9 +52,7 @@ jobs:
         run: npm ci
 
       - name: Build Electron app for Windows
-        run: npm run electron:build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build && npm run electron:build-main && electron-builder --win --publish never
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
