@@ -1,0 +1,117 @@
+{
+  "boars": {
+    "id": "boars",
+    "name": "Boars",
+    "rolls": [
+      {
+        "id": "encounter",
+        "name": "Travel",
+        "dice": [
+          {
+            "id": "roll1-dice1",
+            "name": "Boars encounter",
+            "value": 20,
+            "count": 1,
+            "success": 18,
+            "onSuccess": {
+              "message": "Boars encountered",
+              "rollId": "roll2"
+            }
+          },
+          {
+            "id": "roll1-dice2",
+            "value": 20,
+            "count": 1,
+            "success": 15,
+            "onSuccess": {
+              "message": "Weather changes",
+              "rollId": "roll3"
+            }
+          }
+        ]
+      },
+      {
+        "id": "roll2",
+        "name": "Boar encounter",
+        "dice": [
+          {
+            "id": "roll2-dice1",
+            "value": 4,
+            "count": 1,
+            "success": 4,
+            "onSuccess": {
+              "message": "Friendly"
+            },
+            "onFailure": {
+              "message": "Hostile"
+            }
+          },
+          {
+            "id": "roll2-dice2",
+            "value": 6,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "roll3",
+        "name": "Weather change",
+        "dice": [
+          {
+            "id": "roll3-dice1",
+            "value": 6,
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "goblins": {
+    "id": "goblins",
+    "name": "Goblins",
+    "rolls": [
+      {
+        "id": "roll1",
+        "name": "Roll 1",
+        "dice": [
+          {
+            "id": "roll1-dice1",
+            "value": 6,
+            "count": 4,
+            "success": 15,
+            "onSuccess": {
+              "message": "Success",
+              "rollId": "roll2"
+            }
+          },
+          {
+            "id": "roll1-dice2",
+            "value": 10,
+            "count": 1,
+            "success": 5,
+            "onSuccess": {
+              "message": "Success",
+              "rollId": "roll2"
+            }
+          }
+        ]
+      },
+      {
+        "id": "roll2",
+        "name": "Roll 2",
+        "dice": [
+          {
+            "id": "roll2-dice1",
+            "value": 6,
+            "count": 4,
+            "success": 10,
+            "onSuccess": {
+              "message": "Success",
+              "rollId": null
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
