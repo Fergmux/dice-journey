@@ -1,6 +1,10 @@
-import { app, BrowserWindow, shell } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import {
+  app,
+  BrowserWindow,
+  shell,
+} from "electron";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
