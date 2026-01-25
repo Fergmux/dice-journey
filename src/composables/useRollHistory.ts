@@ -52,6 +52,9 @@ const defaultState: HistoryState = {
   sessions: {},
 };
 
+// Maximum number of history entries to keep per scenario
+const MAX_HISTORY_PER_SCENARIO = 500;
+
 export function useRollHistory() {
   const state = useLocalStorage<HistoryState>(
     "dice-roll-history-v2",
@@ -85,6 +88,11 @@ export function useRollHistory() {
 
     // Add to the beginning so newest is first
     state.value.sessions[session.journeyId]!.unshift(fullSession);
+
+    // Trim to max entries per scenario
+    if (state.value.sessions[session.journeyId]!.length > MAX_HISTORY_PER_SCENARIO) {
+      state.value.sessions[session.journeyId] = state.value.sessions[session.journeyId]!.slice(0, MAX_HISTORY_PER_SCENARIO);
+    }
   }
 
   // Remove a specific session

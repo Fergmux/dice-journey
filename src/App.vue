@@ -1,7 +1,6 @@
 <script setup lang="ts">
-// Create node from connection click/play space click
-// Circular dependencies
-// Custom colours
+// Custom colours?
+// Refactor components
 
 import {
   computed,

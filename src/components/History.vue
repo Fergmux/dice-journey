@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
   computed,
+  inject,
   ref,
+  type Ref,
 } from "vue";
 
 import { useJourneyStorage } from "../composables/useJourneyStorage";
@@ -11,6 +13,8 @@ import {
 } from "../composables/useRollHistory";
 
 const { journeyList, currentJourney, setCurrentJourney } = useJourneyStorage();
+
+const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
 const {
   getJourneyHistory,
   removeHistorySession,
@@ -22,11 +26,30 @@ const {
 // Local selection for history view (can be different from builder/roller current journey)
 const selectedJourneyId = ref<string | null>(currentJourney.value?.id ?? null);
 
+// Pagination
+const ITEMS_PER_PAGE = 50;
+const displayCount = ref(ITEMS_PER_PAGE);
+
 // Get history for selected journey
 const currentHistory = computed(() => {
   if (!selectedJourneyId.value) return [];
   return getJourneyHistory(selectedJourneyId.value);
 });
+
+// Get paginated history (only show displayCount items)
+const displayedHistory = computed(() => {
+  return currentHistory.value.slice(0, displayCount.value);
+});
+
+// Check if there are more items to load
+const hasMore = computed(() => {
+  return currentHistory.value.length > displayCount.value;
+});
+
+// Load more items
+const loadMore = () => {
+  displayCount.value += ITEMS_PER_PAGE;
+};
 
 // Get journey name by ID
 const getJourneyName = (journeyId: string) => {
@@ -76,14 +99,16 @@ const confirmClear = () => {
 const changeJourney = (id: string) => {
   selectedJourneyId.value = id;
   setCurrentJourney(id);
+  // Reset pagination when changing journey
+  displayCount.value = ITEMS_PER_PAGE;
 };
 
-// Group history sessions by date
+// Group history sessions by date (uses paginated displayedHistory)
 const groupedHistory = computed(() => {
   const groups: { date: string; sessions: HistorySession[] }[] = [];
   const dateMap = new Map<string, HistorySession[]>();
 
-  for (const session of currentHistory.value) {
+  for (const session of displayedHistory.value) {
     const date = new Date(session.timestamp).toLocaleDateString();
     if (!dateMap.has(date)) {
       dateMap.set(date, []);
@@ -136,10 +161,12 @@ const getSessionSummary = (session: HistorySession) => {
           </span>
         </h2>
         <span class="text-sm text-gray-400">
-          {{ currentHistory.length }} sessions
-          <span v-if="totalHistoryCount > currentHistory.length">
-            ({{ totalHistoryCount }} total)
-          </span>
+          <template v-if="displayedHistory.length < currentHistory.length">
+            Showing {{ displayedHistory.length }} of {{ currentHistory.length }} sessions
+          </template>
+          <template v-else>
+            {{ currentHistory.length }} sessions
+          </template>
         </span>
       </div>
 
@@ -148,6 +175,7 @@ const getSessionSummary = (session: HistorySession) => {
           v-if="currentHistory.length > 0"
           @click="requestClear('journey')"
           class="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-sm rounded shadow transition-colors cursor-pointer"
+          v-tooltip.bottom="{ value: 'Clear all history entries for this scenario', disabled: !tooltipsEnabled }"
         >
           Clear Scenario History
         </button>
@@ -155,6 +183,7 @@ const getSessionSummary = (session: HistorySession) => {
           v-if="totalHistoryCount > 0"
           @click="requestClear('all')"
           class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded shadow transition-colors cursor-pointer"
+          v-tooltip.bottom="{ value: 'Clear all history for all scenarios', disabled: !tooltipsEnabled }"
         >
           Clear All History
         </button>
@@ -220,7 +249,7 @@ const getSessionSummary = (session: HistorySession) => {
     <div v-else class="space-y-6">
       <div v-for="group in groupedHistory" :key="group.date">
         <!-- Date header -->
-        <div class="sticky top-16 bg-gray-900/95 backdrop-blur-sm py-2 px-3 -mx-3 mb-3 border-b border-gray-700 z-10">
+        <div class="sticky top-16 bg-gray-900/95 backdrop-blur-sm py-2 px-3 -mx-3 mb-3 border-y border-gray-700 z-10">
           <span class="text-sm font-semibold text-gray-400">{{ group.date }}</span>
         </div>
 
@@ -246,7 +275,7 @@ const getSessionSummary = (session: HistorySession) => {
               <button
                 @click="removeHistorySession(session.journeyId, session.id)"
                 class="p-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-700 rounded transition-colors cursor-pointer"
-                title="Remove this session"
+                v-tooltip.bottom="{ value: 'Remove this history entry', disabled: !tooltipsEnabled }"
               >
                 <i class="pi pi-trash text-sm"></i>
               </button>
@@ -357,6 +386,17 @@ const getSessionSummary = (session: HistorySession) => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Load more button -->
+      <div v-if="hasMore" class="flex justify-center pt-4">
+        <button
+          @click="loadMore"
+          class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg shadow transition-colors cursor-pointer flex items-center gap-2"
+        >
+          <i class="pi pi-chevron-down"></i>
+          Load more ({{ currentHistory.length - displayedHistory.length }} remaining)
+        </button>
       </div>
     </div>
   </div>

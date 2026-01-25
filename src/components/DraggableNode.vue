@@ -876,7 +876,7 @@ defineExpose({
                     v-tooltip.bottom="
                       tooltip(
                         hasConnections(die.id, 'success')
-                          ? `${die.onSuccess?.rollIds?.length} connection(s) - click to add more or remove all`
+                          ? isActiveSource(die.id, 'success') ? 'Click to remove all connections': 'Click to add more connections or remove them all'
                           : 'Click to connect success',
                       )
                     "
@@ -898,7 +898,7 @@ defineExpose({
                     v-tooltip.bottom="
                       tooltip(
                         hasConnections(die.id, 'failure')
-                          ? `${die.onFailure?.rollIds?.length} connection(s) - click to add more or remove all`
+                          ? isActiveSource(die.id, 'failure') ? 'Click to remove all connections': 'Click to add more connections or remove them all'
                           : 'Click to connect failure',
                       )
                     "
@@ -924,7 +924,7 @@ defineExpose({
                     v-tooltip.bottom="
                       tooltip(
                         hasConnections(die.id, 'range', range.id)
-                          ? `${getRangeConnectionCount(die.id, range.id)} connection(s) for ${range.min}-${range.max}`
+                          ? isActiveSource(die.id, 'range', range.id) ? 'Click to remove all connections': 'Click to add more connections or remove them all'
                           : `Connect range ${range.min}-${range.max}`,
                       )
                     "

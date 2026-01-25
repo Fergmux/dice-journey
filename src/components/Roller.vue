@@ -47,8 +47,8 @@ const completedRollIds = useLocalStorage<Set<string>>(
 );
 const rollAnimationKey = ref<Map<string, number>>(new Map());
 
-// Helper to create sequence-specific keys
-const seqKey = (seqIndex: number, id: string) => `${seqIndex}-${id}`;
+// Helper to create journey+sequence-specific keys (persists results per scenario)
+const seqKey = (seqIndex: number, id: string) => `${currentJourney.value?.id}-${seqIndex}-${id}`;
 
 // Mark a roll as recently rolled (for the flash effect)
 const markAsRecentlyRolled = (seqIndex: number, rollId: string) => {
@@ -393,7 +393,13 @@ const triggerRoll = (seqIndex: number, rollId?: string, isReroll = false, isPart
 };
 
 const triggerJourney = () => {
-  completedRollIds.value.clear();
+  // Only clear completed rolls for the current journey (not all journeys)
+  const journeyPrefix = `${currentJourney.value?.id}-`;
+  for (const key of [...completedRollIds.value]) {
+    if (key.startsWith(journeyPrefix)) {
+      completedRollIds.value.delete(key);
+    }
+  }
   
   // Start a new session
   isInSession = true;
@@ -414,9 +420,7 @@ const triggerJourney = () => {
 
 const changeJourney = (id: string) => {
   setCurrentJourney(id);
-  // Clear results when switching journeys
-  resultMap.value.clear();
-  completedRollIds.value.clear();
+  // Results are now persisted per scenario via seqKey including journey ID
 };
 
 // Notes modal state
@@ -458,6 +462,7 @@ const closeNotesModal = () => {
     <button
       @click="triggerJourney()"
       class="mb-6 px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg transition-colors cursor-pointer"
+      v-tooltip.bottom="{ value: 'Roll all starter dice in this scenario and any follow up rolls', disabled: !tooltipsEnabled }"
     >
       Roll All
     </button>
@@ -503,6 +508,7 @@ const closeNotesModal = () => {
                 <button
                   @click="triggerRoll(seqIndex, roll.id, completedRollIds.has(seqKey(seqIndex, roll.id)))"
                   class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
+                  v-tooltip.bottom="{ value: (completedRollIds.has(seqKey(seqIndex, roll.id)) ? 'Reroll' : 'Roll') + ' this die and any follow up rolls', disabled: !tooltipsEnabled }"
                 >
                   {{ completedRollIds.has(seqKey(seqIndex, roll.id)) ? "Reroll" : "Roll" }}
                 </button>
@@ -522,7 +528,7 @@ const closeNotesModal = () => {
                   !hasResult(seqIndex, die.id)
                     ? 'border-gray-600'
                     : die.mode === 'range'
-                      ? (getMatchingRanges(seqIndex, die.id).length > 0 ? 'border-purple-500' : 'border-gray-500')
+                      ? 'border-purple-500'
                       : getResultSuccess(seqIndex, die.id)
                         ? 'border-green-500'
                         : 'border-red-500'
@@ -532,14 +538,14 @@ const closeNotesModal = () => {
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-gray-400 text-sm font-mono">
                     {{ die.count }}d{{ die.value }}
-                    <span v-if="die.success" class="text-gray-500"
+                    <span v-if="die.mode !== 'range' && die.success" class="text-gray-500"
                       >(≥{{ die.success }})</span
                     >
                   </span>
                   <button
                     @click="rollDice(seqIndex, die.id)"
                     class="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded shadow-lg transition-colors text-sm cursor-pointer"
-                    v-tooltip.bottom="{ value: 'Reroll this die', disabled: !tooltipsEnabled }"
+                    v-tooltip.bottom="{ value: 'Reroll this die without triggering any follow up rolls', disabled: !tooltipsEnabled }"
                   >
                     🎲
                   </button>
@@ -680,7 +686,7 @@ const closeNotesModal = () => {
 .roll-flash-overlay {
   position: absolute;
   inset: 0;
-  border: 2px solid #22c55e;
+  border: 2px solid #155dfc;
   border-radius: 0.5rem;
   pointer-events: none;
   animation: border-fade 2s ease-out forwards;
