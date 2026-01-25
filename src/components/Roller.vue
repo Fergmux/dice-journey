@@ -6,6 +6,8 @@ import {
   type Ref,
 } from "vue";
 
+import { useLocalStorage } from "@vueuse/core";
+
 import { useJourneyStorage } from "../composables/useJourneyStorage";
 import type { Die } from "../Config";
 
@@ -13,8 +15,26 @@ const { currentJourney, journeyList, setCurrentJourney } = useJourneyStorage();
 
 const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
 
-const resultMap = ref<Map<string, number[]>>(new Map());
-const completedRollIds = ref<Set<string>>(new Set());
+const resultMap = useLocalStorage<Map<string, number[]>>(
+  "dice-roller-results",
+  new Map(),
+  {
+    serializer: {
+      read: (v) => new Map(JSON.parse(v)),
+      write: (v) => JSON.stringify([...v.entries()]),
+    },
+  },
+);
+const completedRollIds = useLocalStorage<Set<string>>(
+  "dice-roller-completed-rolls",
+  new Set(),
+  {
+    serializer: {
+      read: (v) => new Set(JSON.parse(v)),
+      write: (v) => JSON.stringify([...v]),
+    },
+  },
+);
 const rollAnimationKey = ref<Map<string, number>>(new Map());
 
 // Mark a roll as recently rolled (for the flash effect)
