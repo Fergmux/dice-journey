@@ -27,6 +27,7 @@ const route = useRoute();
 const isHome = computed(() => route.path === "/");
 const isBuilder = computed(() => route.path === "/builder");
 const isRoller = computed(() => route.path === "/roller");
+const isHistory = computed(() => route.path === "/history");
 
 const tooltipsEnabled = useLocalStorage("tooltipsEnabled", true);
 provide("tooltipsEnabled", tooltipsEnabled);
@@ -72,6 +73,18 @@ provide("tooltipsEnabled", tooltipsEnabled);
       >
         <i class="pi pi-box"></i>
         Roller
+      </button>
+      <button
+        @click="router.push('/history')"
+        class="px-3 py-2 font-medium rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
+        :class="
+          isHistory
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+        "
+      >
+        <i class="pi pi-history"></i>
+        History
       </button>
     </div>
 

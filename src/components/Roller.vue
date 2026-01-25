@@ -9,9 +9,19 @@ import {
 import { useLocalStorage } from "@vueuse/core";
 
 import { useJourneyStorage } from "../composables/useJourneyStorage";
+import {
+  type DieResult,
+  type RollResult,
+  useRollHistory,
+} from "../composables/useRollHistory";
 import type { Die } from "../Config";
 
 const { currentJourney, journeyList, setCurrentJourney } = useJourneyStorage();
+const { addHistorySession } = useRollHistory();
+
+// Session accumulator for grouping rolls
+let currentSessionRolls: RollResult[] = [];
+let isInSession = false;
 
 const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
 
@@ -110,7 +120,49 @@ const getDownstreamRolls = (rollId: string, visited = new Set<string>()): Set<st
   return visited;
 };
 
-const triggerRoll = (rollId?: string, isReroll = false) => {
+// Build roll result for history
+const buildRollResult = (rollId: string): RollResult | null => {
+  if (!currentJourney.value) return null;
+  const roll = currentJourney.value.rolls.find((r) => r.id === rollId);
+  if (!roll) return null;
+
+  const diceResults: DieResult[] = roll.dice.map((dice) => {
+    const results = resultMap.value.get(dice.id) ?? [];
+    const total = results.reduce((a, b) => a + b, 0);
+    const isSuccess = dice.success ? total >= dice.success : true;
+    return {
+      id: dice.id,
+      name: dice.name,
+      value: dice.value,
+      count: dice.count,
+      success: dice.success,
+      results: [...results],
+      total,
+      isSuccess,
+      message: isSuccess ? dice.onSuccess?.message : dice.onFailure?.message,
+    };
+  });
+
+  return {
+    rollId: roll.id,
+    rollName: roll.name,
+    dice: diceResults,
+  };
+};
+
+// Save the current session to history
+const saveCurrentSession = () => {
+  if (currentSessionRolls.length > 0 && currentJourney.value) {
+    addHistorySession({
+      journeyId: currentJourney.value.id,
+      journeyName: currentJourney.value.name,
+      rolls: [...currentSessionRolls],
+    });
+    currentSessionRolls = [];
+  }
+};
+
+const triggerRoll = (rollId?: string, isReroll = false, isPartOfSession = false) => {
   if (rollId && currentJourney.value) {
     const roll = currentJourney.value.rolls.find((roll) => roll.id === rollId);
     if (roll) {
@@ -127,21 +179,43 @@ const triggerRoll = (rollId?: string, isReroll = false) => {
       });
       completedRollIds.value.add(rollId);
       markAsRecentlyRolled(rollId);
+
+      // Build and collect roll result for history
+      const rollResult = buildRollResult(rollId);
+      if (rollResult) {
+        currentSessionRolls.push(rollResult);
+      }
+
+      // Trigger chained rolls
       roll.dice.forEach((dice) => {
         if (getResultSuccess(dice.id) && dice.onSuccess?.rollId) {
-          triggerRoll(dice.onSuccess.rollId);
+          triggerRoll(dice.onSuccess.rollId, false, true);
         }
       });
+
+      // If this is a standalone roll (not part of Roll All), save session immediately
+      if (!isInSession && !isPartOfSession) {
+        saveCurrentSession();
+      }
     }
   }
 };
 
 const triggerJourney = () => {
   completedRollIds.value.clear();
+  
+  // Start a new session
+  isInSession = true;
+  currentSessionRolls = [];
+  
   // Trigger all root rolls (nodes that aren't triggered conditionally)
   for (const roll of rootRolls.value) {
-    triggerRoll(roll.id);
+    triggerRoll(roll.id, false, true);
   }
+  
+  // End session and save to history
+  isInSession = false;
+  saveCurrentSession();
 };
 
 const changeJourney = (id: string) => {
