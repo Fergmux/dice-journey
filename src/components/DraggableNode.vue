@@ -62,6 +62,9 @@ function deleteNode() {
 const menuOpen = ref(false);
 const menuContainer = useTemplateRef<HTMLElement>("menuContainer");
 
+// Collapse state
+const collapsed = ref(false);
+
 // Close menu when clicking outside
 onClickOutside(menuContainer, () => {
   if (menuOpen.value) {
@@ -148,7 +151,9 @@ function handleNotes() {
 
 function handleCollapse() {
   closeMenu();
-  // TODO: Implement collapse functionality
+  collapsed.value = !collapsed.value;
+  // Emit to update connection lines after collapse/expand
+  emit("connectionRemoved");
 }
 
 // Inject connection state and methods from Builder
@@ -465,13 +470,18 @@ defineExpose({
   >
     <!-- Header with input circle and controls -->
     <div
-      class="flex items-center justify-between px-3 py-2 bg-gray-700 rounded-t-lg border-b border-gray-600 gap-2"
+      class="flex items-center justify-between bg-gray-700 rounded-t-lg gap-2"
+      :class="[
+        collapsed ? 'px-2 py-1.5' : 'px-3 py-2',
+        collapsed && (!dice || dice.length === 0) ? 'rounded-b-lg' : 'border-b border-gray-600'
+      ]"
     >
       <!-- Input circle (white) - click to complete a connection -->
       <div
         ref="inputCircle"
-        class="w-5 h-5 rounded-full cursor-pointer transition-all border-2 border-gray-400"
+        class="rounded-full cursor-pointer transition-all border-2 border-gray-400 shrink-0"
         :class="[
+          collapsed ? 'w-4 h-4' : 'w-5 h-5',
           canBeTarget
             ? 'bg-yellow-400 border-yellow-300 ring-2 ring-yellow-200 animate-pulse'
             : 'bg-white hover:bg-gray-200',
@@ -480,16 +490,25 @@ defineExpose({
         v-tooltip.bottom="tooltip('Drop connection here')"
       ></div>
 
-      <!-- Node name input -->
+      <!-- Node name input (expanded) -->
       <input
+        v-if="!collapsed"
         type="text"
         v-model="name"
         class="flex-1 mx-2 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm font-medium focus:border-blue-500 focus:outline-none"
         placeholder="Node name"
       />
+      <!-- Node name text (collapsed) -->
+      <span
+        v-else
+        class="flex-1 text-white text-xs font-medium truncate"
+      >
+        {{ name || 'Unnamed' }}
+      </span>
 
-      <!-- Add die button -->
+      <!-- Add die button (only when expanded) -->
       <button
+        v-if="!collapsed"
         class="py-2 px-3 text-white bg-gray-600 hover:text-green-500 hover:bg-green-900/50 rounded shadow-lg transition-colors cursor-pointer"
         @click.stop="addDie"
         v-tooltip.bottom="tooltip('Add die')"
@@ -500,7 +519,8 @@ defineExpose({
       <!-- Menu button -->
       <div ref="menuContainer" class="relative">
         <button
-          class="py-2 px-3 text-gray-300 bg-gray-600 hover:text-white hover:bg-gray-500 rounded shadow-lg transition-colors cursor-pointer"
+          class="text-gray-300 bg-gray-600 hover:text-white hover:bg-gray-500 rounded shadow-lg transition-colors cursor-pointer"
+          :class="collapsed ? 'py-1 px-2 text-xs' : 'py-2 px-3'"
           @click.stop="toggleMenu"
           v-tooltip.bottom="tooltip('Options')"
         >
@@ -530,8 +550,8 @@ defineExpose({
             class="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2 transition-colors cursor-pointer"
             @click.stop="handleCollapse"
           >
-            <i class="pi pi-minus text-xs"></i>
-            Collapse
+            <i :class="collapsed ? 'pi pi-plus' : 'pi pi-minus'" class="text-xs"></i>
+            {{ collapsed ? 'Expand' : 'Collapse' }}
           </button>
           <div class="border-t border-gray-600"></div>
           <button
@@ -545,8 +565,78 @@ defineExpose({
       </div>
     </div>
 
-    <!-- Dice table -->
-    <div class="p-2">
+    <!-- Collapsed view -->
+    <div v-if="collapsed" class="px-2 py-1">
+      <div
+        v-for="die in dice"
+        :key="die.id"
+        class="flex items-center gap-2 py-0.5 not-first:border-t border-gray-600 py-1"
+      >
+        <!-- Die name -->
+        <div class="text-[10px] text-gray-400 font-medium w-24 truncate shrink-0 text-left">
+          {{ die.name || `${die.count}d${die.value}` }}
+        </div>
+        
+        <!-- Messages and circles -->
+        <div class="flex-1 flex flex-col gap-px min-w-0">
+          <!-- Threshold mode: success/failure rows -->
+          <template v-if="die.mode !== 'range'">
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] text-green-400 truncate flex-1 text-right min-h-4 leading-4">
+                {{ die.onSuccess?.message }}
+              </span>
+              <div
+                :ref="(el) => (successCircleRefs[die.id] = el as HTMLElement)"
+                class="w-2.5 h-2.5 bg-green-600 rounded-full cursor-pointer transition-all hover:scale-125 hover:bg-green-500 shrink-0"
+                :class="{
+                  'ring-2 ring-green-300 scale-125': isActiveSource(die.id, 'success'),
+                  'ring-1 ring-green-300': hasConnections(die.id, 'success'),
+                }"
+                @click.stop="handleCircleClick(die.id, 'success')"
+              ></div>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] text-red-400 truncate flex-1 text-right min-h-4 leading-4">
+                {{ die.onFailure?.message }}
+              </span>
+              <div
+                :ref="(el) => (failureCircleRefs[die.id] = el as HTMLElement)"
+                class="w-2.5 h-2.5 bg-red-600 rounded-full cursor-pointer transition-all hover:scale-125 hover:bg-red-500 shrink-0"
+                :class="{
+                  'ring-2 ring-red-300 scale-125': isActiveSource(die.id, 'failure'),
+                  'ring-1 ring-red-300': hasConnections(die.id, 'failure'),
+                }"
+                @click.stop="handleCircleClick(die.id, 'failure')"
+              ></div>
+            </div>
+          </template>
+          <!-- Range mode: one row per range -->
+          <template v-else>
+            <div
+              v-for="range in die.ranges"
+              :key="range.id"
+              class="flex items-center gap-1"
+            >
+              <span class="text-[10px] text-purple-400 truncate flex-1 text-right min-h-4 leading-4">
+                {{ range.message }}
+              </span>
+              <div
+                :ref="(el) => (rangeCircleRefs[`${die.id}-${range.id}`] = el as HTMLElement)"
+                class="w-2.5 h-2.5 bg-purple-600 rounded-full cursor-pointer transition-all hover:scale-125 hover:bg-purple-500 shrink-0"
+                :class="{
+                  'ring-2 ring-purple-300 scale-125': isActiveSource(die.id, 'range', range.id),
+                  'ring-1 ring-purple-300': hasConnections(die.id, 'range', range.id),
+                }"
+                @click.stop="handleCircleClick(die.id, 'range', range.id)"
+              ></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dice table (expanded view) -->
+    <div v-else class="p-2">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-gray-400 text-xs uppercase">
