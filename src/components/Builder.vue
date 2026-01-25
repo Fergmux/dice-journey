@@ -58,15 +58,17 @@ function confirmDeleteJourney() {
 // Computed nodes from current journey's rolls
 const nodes = computed(() => currentJourney.value?.rolls ?? []);
 
-function addNode() {
+function addNode(x = 50, y = 50) {
+  const id = `roll-${Date.now()}`;
   const newRoll = {
-    id: `roll-${Date.now()}`,
+    id,
     name: "",
-    x: 50,
-    y: 50,
-    dice: [{ id: `roll-${Date.now()}-die-1`, value: 6, count: 1 }],
+    x,
+    y,
+    dice: [{ id: `${id}-die-1`, value: 6, count: 1 }],
   };
   addRoll(newRoll);
+  return id;
 }
 
 const container = useTemplateRef<HTMLElement>("container");
@@ -166,10 +168,32 @@ function handleConnectionComplete(
   }
 }
 
-// Cancel connection when clicking on empty space
-function handleContainerClick() {
+// Handle clicking on empty space in the canvas
+function handleContainerClick(event: MouseEvent) {
+  // Only handle clicks directly on the container, not on nodes
+  if (event.target !== container.value) return;
+
+  // Get click position relative to container
+  const containerRect = container.value?.getBoundingClientRect();
+  if (!containerRect) return;
+
+  const x = event.clientX - containerRect.left;
+  const y = event.clientY - containerRect.top;
+
   if (pendingConnection.value) {
-    cancelConnection();
+    // Create a new node at the click position and connect to it
+    const { sourceNodeId, dieId, type, rangeId } = pendingConnection.value;
+    const newNodeId = addNode(x, y);
+
+    // Wait for the node to be rendered, then complete the connection
+    nextTick(() => {
+      handleConnectionComplete(sourceNodeId, dieId, type, newNodeId, rangeId);
+      cancelConnection();
+    });
+  } else {
+    // Just create a new node at the click position
+    addNode(x, y);
+    nextTick(() => updateConnectionLines());
   }
 }
 </script>
@@ -215,7 +239,7 @@ function handleContainerClick() {
           placeholder="Scenario name"
         />
         <button
-          @click="addNode"
+          @click="addNode()"
           class="p-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg transition-colors flex items-center cursor-pointer"
           v-tooltip.bottom="{ value: 'Add a new node', disabled: !tooltipsEnabled }"
         >
