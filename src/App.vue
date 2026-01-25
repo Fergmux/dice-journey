@@ -1,9 +1,5 @@
 <script setup lang="ts">
 // Create node from connection click/play space click
-// Copy node
-// d100
-// small mode/collapsible
-// notes
 // Circular dependencies
 // Custom colours
 

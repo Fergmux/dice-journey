@@ -119,10 +119,71 @@ function cancelConnection() {
   pendingConnection.value = null;
 }
 
+// Check if there's a path from startNodeId to endNodeId through existing connections
+function canReach(startNodeId: string, endNodeId: string, visited: Set<string> = new Set()): boolean {
+  if (startNodeId === endNodeId) return true;
+  if (visited.has(startNodeId)) return false;
+
+  visited.add(startNodeId);
+
+  const node = nodes.value.find(n => n.id === startNodeId);
+  if (!node?.dice) return false;
+
+  for (const die of node.dice) {
+    // Check success connections
+    if (die.onSuccess?.rollIds) {
+      for (const connectedId of die.onSuccess.rollIds) {
+        if (canReach(connectedId, endNodeId, visited)) return true;
+      }
+    }
+    // Check failure connections
+    if (die.onFailure?.rollIds) {
+      for (const connectedId of die.onFailure.rollIds) {
+        if (canReach(connectedId, endNodeId, visited)) return true;
+      }
+    }
+    // Check range connections
+    if (die.ranges) {
+      for (const range of die.ranges) {
+        if (range.rollIds) {
+          for (const connectedId of range.rollIds) {
+            if (canReach(connectedId, endNodeId, visited)) return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+// Check if a node is a valid connection target and return reason if not
+function getConnectionTargetValidity(targetNodeId: string): { valid: boolean; reason?: string } {
+  if (!pendingConnection.value) {
+    return { valid: false, reason: "No connection in progress" };
+  }
+
+  const sourceNodeId = pendingConnection.value.sourceNodeId;
+
+  // Can't connect to self
+  if (targetNodeId === sourceNodeId) {
+    return { valid: false, reason: "Cannot connect a node to itself" };
+  }
+
+  // Check if this would create a circular dependency
+  // If the target can reach the source through existing connections, connecting source → target creates a cycle
+  if (canReach(targetNodeId, sourceNodeId)) {
+    return { valid: false, reason: "Would create a circular dependency" };
+  }
+
+  return { valid: true };
+}
+
 // Provide connection state and methods to child components
 provide("pendingConnection", pendingConnection);
 provide("startConnection", startConnection);
 provide("cancelConnection", cancelConnection);
+provide("getConnectionTargetValidity", getConnectionTargetValidity);
 
 function updateNodePosition(id: string, x: number, y: number) {
   updateRollPosition(id, x, y);

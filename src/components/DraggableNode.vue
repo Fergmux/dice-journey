@@ -174,6 +174,8 @@ const startConnection =
     (sourceNodeId: string, dieId: string, type: "success" | "failure" | "range", rangeId?: string) => void
   >("startConnection");
 const cancelConnection = inject<() => void>("cancelConnection");
+const getConnectionTargetValidity =
+  inject<(targetNodeId: string) => { valid: boolean; reason?: string }>("getConnectionTargetValidity");
 
 const el = useTemplateRef("node");
 const inputCircle = useTemplateRef<HTMLElement>("inputCircle");
@@ -199,12 +201,26 @@ const { x, y, style } = useDraggable(el, {
   },
 });
 
-// Check if this node can be a target (not the source node)
+// Check if this node can be a valid connection target
+const connectionTargetValidity = computed(() => {
+  if (!pendingConnection?.value) {
+    return { valid: false, reason: "No connection in progress" };
+  }
+  if (getConnectionTargetValidity) {
+    return getConnectionTargetValidity(props.id);
+  }
+  // Fallback if function not provided
+  return { valid: pendingConnection.value.sourceNodeId !== props.id };
+});
+
+// Check if this node can be a target (valid connection)
 const canBeTarget = computed(() => {
-  return (
-    pendingConnection?.value &&
-    pendingConnection.value.sourceNodeId !== props.id
-  );
+  return pendingConnection?.value && connectionTargetValidity.value.valid;
+});
+
+// Check if there's a pending connection but this node is an invalid target
+const isInvalidTarget = computed(() => {
+  return pendingConnection?.value && !connectionTargetValidity.value.valid;
 });
 
 // Check if a specific die's circle is the active source
@@ -489,15 +505,21 @@ defineExpose({
       <!-- Input circle (white) - click to complete a connection -->
       <div
         ref="inputCircle"
-        class="rounded-full cursor-pointer transition-all border-2 border-gray-400 shrink-0"
+        class="rounded-full transition-all border-2 shrink-0 cursor-pointer"
         :class="[
           collapsed ? 'w-4 h-4' : 'w-5 h-5',
           canBeTarget
             ? 'bg-yellow-400 border-yellow-300 ring-2 ring-yellow-200 animate-pulse'
-            : 'bg-white hover:bg-gray-200',
+            : isInvalidTarget
+              ? 'bg-gray-500 border-gray-400 opacity-50'
+              : 'bg-white hover:bg-gray-200 border-gray-400',
         ]"
         @click.stop="handleInputClick"
-        v-tooltip.bottom="tooltip('Drop connection here')"
+        v-tooltip.bottom="tooltip(
+          isInvalidTarget
+            ? connectionTargetValidity.reason ?? 'Invalid connection target'
+            : 'Drop connection here'
+        )"
       ></div>
 
       <!-- Node name input (expanded) -->
