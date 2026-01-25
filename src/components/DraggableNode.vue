@@ -14,6 +14,7 @@ import {
 } from "@vueuse/core";
 
 import type { Die } from "../Config";
+import BaseModal from "./BaseModal.vue";
 
 interface PendingConnection {
   sourceNodeId: string;
@@ -939,47 +940,25 @@ defineExpose({
     </div>
 
     <!-- Notes Modal -->
-    <Teleport to="body">
-      <div
-        v-if="notesModalOpen"
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
-        @click="closeNotesModal"
-      >
-        <div
-          class="bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-lg mx-4"
-          @click.stop
+    <BaseModal
+      v-if="notesModalOpen"
+      :title="`Notes for ${name || 'Unnamed Node'}`"
+      @close="closeNotesModal"
+    >
+      <textarea
+        v-model="notes"
+        class="w-full h-48 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
+        placeholder="Enter notes for this node..."
+      ></textarea>
+
+      <template #footer>
+        <button
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors cursor-pointer"
+          @click="closeNotesModal"
         >
-          <!-- Modal header -->
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
-            <h3 class="text-white font-medium">
-              Notes for {{ name || 'Unnamed Node' }}
-            </h3>
-            <button
-              class="text-gray-400 hover:text-white transition-colors cursor-pointer"
-              @click="closeNotesModal"
-            >
-              <i class="pi pi-times"></i>
-            </button>
-          </div>
-          <!-- Modal body -->
-          <div class="p-4">
-            <textarea
-              v-model="notes"
-              class="w-full h-48 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
-              placeholder="Enter notes for this node..."
-            ></textarea>
-          </div>
-          <!-- Modal footer -->
-          <div class="flex justify-end px-4 py-3 border-t border-gray-600">
-            <button
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors cursor-pointer"
-              @click="closeNotesModal"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+          Done
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>

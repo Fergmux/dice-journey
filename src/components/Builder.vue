@@ -13,6 +13,7 @@ import {
 import { useConnectionLines } from "../composables/useConnectionLines";
 import { useJourneyStorage } from "../composables/useJourneyStorage";
 import DraggableNode from "./DraggableNode.vue";
+import JourneyTabs from "./JourneyTabs.vue";
 
 const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
 
@@ -266,29 +267,15 @@ function handleContainerClick(event: MouseEvent) {
       class="bg-gray-800 rounded-lg p-4 mb-4 shadow-lg border border-gray-700 w-max m-auto max-w-[600px]"
     >
       <!-- Journey selector row -->
-      <div class="flex flex-wrap items-center gap-2 mb-4">
-        <span class="text-gray-400 text-sm mr-2">Scenarios:</span>
-        <a
-          v-for="journey in journeyList"
-          :key="journey.id"
-          class="cursor-pointer px-3 py-1 rounded transition-colors text-sm"
-          :class="
-            currentJourney?.id === journey.id
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-blue-200 hover:bg-gray-600'
-          "
-          @click="setCurrentJourney(journey.id)"
-        >
-          {{ journey.name }}
-        </a>
-        <button
-          @click="addJourney"
-          class="p-[6px] bg-gray-700 hover:bg-gray-600 text-green-400 rounded shadow-lg transition-colors text-sm flex items-center gap-1 cursor-pointer"
-          v-tooltip.bottom="{ value: 'Add a new scenario', disabled: !tooltipsEnabled }"
-        >
-          <i class="pi pi-plus text-xs"></i>
-        </button>
-      </div>
+      <JourneyTabs
+        :journeys="journeyList"
+        :selected-id="currentJourney?.id ?? null"
+        show-label
+        show-add-button
+        class="mb-4"
+        @select="setCurrentJourney"
+        @add="addJourney"
+      />
 
       <!-- Current scenario name and add node -->
       <div class="flex items-center gap-2">

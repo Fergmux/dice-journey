@@ -15,6 +15,8 @@ import {
   useRollHistory,
 } from "../composables/useRollHistory";
 import type { Die } from "../Config";
+import BaseModal from "./BaseModal.vue";
+import JourneyTabs from "./JourneyTabs.vue";
 
 const { currentJourney, journeyList, setCurrentJourney } = useJourneyStorage();
 const { addHistorySession } = useRollHistory();
@@ -442,21 +444,12 @@ const closeNotesModal = () => {
 <template>
   <div class="p-4">
     <!-- Journey selector -->
-    <div class="flex flex-wrap gap-2 mb-4 justify-center">
-      <a
-        v-for="journey in journeyList"
-        :key="journey.id"
-        class="cursor-pointer px-3 py-1 rounded transition-colors"
-        :class="
-          currentJourney?.id === journey.id
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-700 text-blue-200 hover:bg-gray-600'
-        "
-        @click="changeJourney(journey.id)"
-      >
-        {{ journey.name }}
-      </a>
-    </div>
+    <JourneyTabs
+      :journeys="journeyList"
+      :selected-id="currentJourney?.id ?? null"
+      class="mb-4"
+      @select="changeJourney"
+    />
 
     <!-- Trigger button -->
     <button
@@ -630,55 +623,33 @@ const closeNotesModal = () => {
     </div>
 
     <!-- Notes Modal (read-only) -->
-    <Teleport to="body">
+    <BaseModal
+      v-if="notesModalOpen"
+      :title="`Notes for ${notesModalTitle}`"
+      @close="closeNotesModal"
+    >
       <div
-        v-if="notesModalOpen"
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
-        @click="closeNotesModal"
+        v-if="notesModalContent"
+        class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm whitespace-pre-wrap"
       >
-        <div
-          class="bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-lg mx-4"
-          @click.stop
-        >
-          <!-- Modal header -->
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
-            <h3 class="text-white font-medium">
-              Notes for {{ notesModalTitle }}
-            </h3>
-            <button
-              class="text-gray-400 hover:text-white transition-colors cursor-pointer"
-              @click="closeNotesModal"
-            >
-              <i class="pi pi-times"></i>
-            </button>
-          </div>
-          <!-- Modal body -->
-          <div class="p-4">
-            <div
-              v-if="notesModalContent"
-              class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm whitespace-pre-wrap"
-            >
-              {{ notesModalContent }}
-            </div>
-            <div
-              v-else
-              class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-500 text-sm italic"
-            >
-              No notes for this roll.
-            </div>
-          </div>
-          <!-- Modal footer -->
-          <div class="flex justify-end px-4 py-3 border-t border-gray-600">
-            <button
-              class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors cursor-pointer"
-              @click="closeNotesModal"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        {{ notesModalContent }}
       </div>
-    </Teleport>
+      <div
+        v-else
+        class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-500 text-sm italic"
+      >
+        No notes for this roll.
+      </div>
+
+      <template #footer>
+        <button
+          class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors cursor-pointer"
+          @click="closeNotesModal"
+        >
+          Close
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 

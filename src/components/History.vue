@@ -11,6 +11,8 @@ import {
   type HistorySession,
   useRollHistory,
 } from "../composables/useRollHistory";
+import BaseModal from "./BaseModal.vue";
+import JourneyTabs from "./JourneyTabs.vue";
 
 const { journeyList, currentJourney, setCurrentJourney } = useJourneyStorage();
 
@@ -135,21 +137,12 @@ const getSessionSummary = (session: HistorySession) => {
 <template>
   <div class="p-4">
     <!-- Journey selector -->
-    <div class="flex flex-wrap gap-2 mb-4 justify-center">
-      <a
-        v-for="journey in journeyList"
-        :key="journey.id"
-        class="cursor-pointer px-3 py-1 rounded transition-colors"
-        :class="
-          selectedJourneyId === journey.id
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-700 text-blue-200 hover:bg-gray-600'
-        "
-        @click="changeJourney(journey.id)"
-      >
-        {{ journey.name }}
-      </a>
-    </div>
+    <JourneyTabs
+      :journeys="journeyList"
+      :selected-id="selectedJourneyId"
+      class="mb-4"
+      @select="changeJourney"
+    />
 
     <!-- Header with clear buttons -->
     <div class="flex items-center justify-between mb-6">
@@ -191,40 +184,38 @@ const getSessionSummary = (session: HistorySession) => {
     </div>
 
     <!-- Confirmation modal -->
-    <div
+    <BaseModal
       v-if="showClearConfirm"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      @click.self="showClearConfirm = false"
+      title="Confirm Clear History"
+      @close="showClearConfirm = false"
     >
-      <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-600 max-w-md">
-        <h3 class="text-lg font-bold text-white mb-4">Confirm Clear History</h3>
-        <p class="text-gray-300 mb-6">
-          <template v-if="clearMode === 'all'">
-            Are you sure you want to clear <strong>all</strong> roll history across all scenarios?
-            This cannot be undone.
-          </template>
-          <template v-else>
-            Are you sure you want to clear all roll history for
-            <strong>{{ getJourneyName(selectedJourneyId!) }}</strong>?
-            This cannot be undone.
-          </template>
-        </p>
-        <div class="flex justify-end gap-3">
-          <button
-            @click="showClearConfirm = false"
-            class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmClear"
-            class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded transition-colors cursor-pointer"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-    </div>
+      <p class="text-gray-300">
+        <template v-if="clearMode === 'all'">
+          Are you sure you want to clear <strong>all</strong> roll history across all scenarios?
+          This cannot be undone.
+        </template>
+        <template v-else>
+          Are you sure you want to clear all roll history for
+          <strong>{{ getJourneyName(selectedJourneyId!) }}</strong>?
+          This cannot be undone.
+        </template>
+      </p>
+
+      <template #footer>
+        <button
+          @click="showClearConfirm = false"
+          class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          @click="confirmClear"
+          class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded transition-colors cursor-pointer"
+        >
+          Clear
+        </button>
+      </template>
+    </BaseModal>
 
     <!-- Empty state -->
     <div
