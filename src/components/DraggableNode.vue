@@ -273,14 +273,6 @@ function hasConnections(dieId: string, type: "success" | "failure" | "range", ra
   return false;
 }
 
-// Get connection count for a range
-function getRangeConnectionCount(dieId: string, rangeId: string): number {
-  const die = dice.value?.find((d) => d.id === dieId);
-  if (!die?.ranges) return 0;
-  const range = die.ranges.find((r) => r.id === rangeId);
-  return range?.rollIds?.length ?? 0;
-}
-
 // Start a connection from a green/red/range circle, or remove all if already active
 function handleCircleClick(dieId: string, type: "success" | "failure" | "range", rangeId?: string) {
   // If this circle is already the active source, remove all connections and cancel
