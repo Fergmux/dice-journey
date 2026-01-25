@@ -1,6 +1,6 @@
 export interface Callback {
   message: string
-  rollId?: string
+  rollIds?: string[]
 }
 
 export interface Die {

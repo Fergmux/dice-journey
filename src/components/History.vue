@@ -252,28 +252,26 @@ const getSessionSummary = (session: HistorySession) => {
               </button>
             </div>
 
-            <!-- Rolls in this session - displayed horizontally -->
-            <div 
-              class="flex gap-3 overflow-x-auto pb-2"
-              :class="{ 'flex-wrap': session.rolls.length <= 4 }"
-            >
+            <!-- Rolls in this session - displayed horizontally with dynamic widths -->
+            <div class="flex gap-3 overflow-x-auto pb-2 flex-wrap">
               <div
                 v-for="roll in session.rolls"
                 :key="roll.rollId"
-                class="bg-gray-900 rounded-lg p-3 border border-gray-700 min-w-[200px] shrink-0"
-                :class="{ 'flex-1': session.rolls.length <= 4 }"
+                class="bg-gray-900 rounded-lg p-3 border border-gray-700"
+                :style="{
+                  flex: `${Math.max(roll.dice.length, 1)} 1 ${Math.max(roll.dice.length, 1) * 120}px`,
+                  minWidth: `${Math.max(roll.dice.length * 100, 150)}px`,
+                }"
               >
                 <!-- Roll name -->
                 <h4 class="text-sm font-semibold text-white mb-2 pb-1 border-b border-gray-700">
                   {{ roll.rollName || "Unnamed Roll" }}
                 </h4>
 
-                <!-- Dice in this roll - horizontal grid like Roller -->
+                <!-- Dice in this roll - responsive grid -->
                 <div
                   class="grid gap-2"
-                  :style="{
-                    gridTemplateColumns: `repeat(${Math.min(roll.dice.length, 3)}, 1fr)`,
-                  }"
+                  style="grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));"
                 >
                   <div
                     v-for="die in roll.dice"
