@@ -33,6 +33,7 @@ export interface Roll {
   id: string
   name: string
   dice: Die[]
+  notes?: string
 }
 
 export interface Journey {

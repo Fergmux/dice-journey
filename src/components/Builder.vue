@@ -134,13 +134,14 @@ function deleteNode(id: string) {
   updateConnectionLines();
 }
 
-function copyNode(nodeData: { name: string; x: number; y: number; dice: import("../Config").Die[] }) {
+function copyNode(nodeData: { name: string; x: number; y: number; dice: import("../Config").Die[]; notes?: string }) {
   const newRoll = {
     id: `roll-${Date.now()}`,
     name: nodeData.name,
     x: nodeData.x,
     y: nodeData.y,
     dice: nodeData.dice,
+    notes: nodeData.notes,
   };
   addRoll(newRoll);
   nextTick(() => updateConnectionLines());
@@ -318,6 +319,7 @@ function handleContainerClick() {
         "
         v-model="node.name"
         v-model:dice="node.dice"
+        v-model:notes="node.notes"
         :id="node.id"
         :initial-x="node.x"
         :initial-y="node.y"

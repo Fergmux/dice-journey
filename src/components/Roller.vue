@@ -418,6 +418,21 @@ const changeJourney = (id: string) => {
   resultMap.value.clear();
   completedRollIds.value.clear();
 };
+
+// Notes modal state
+const notesModalOpen = ref(false);
+const notesModalContent = ref("");
+const notesModalTitle = ref("");
+
+const openNotesModal = (name: string, notes: string | undefined) => {
+  notesModalTitle.value = name || "Unnamed Roll";
+  notesModalContent.value = notes || "";
+  notesModalOpen.value = true;
+};
+
+const closeNotesModal = () => {
+  notesModalOpen.value = false;
+};
 </script>
 
 <template>
@@ -476,12 +491,22 @@ const changeJourney = (id: string) => {
               <h3 class="text-lg font-bold text-white">
                 {{ roll.name || "Unnamed Roll" }}
               </h3>
-              <button
-                @click="triggerRoll(seqIndex, roll.id, completedRollIds.has(seqKey(seqIndex, roll.id)))"
-                class="ml-2 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
-              >
-                {{ completedRollIds.has(seqKey(seqIndex, roll.id)) ? "Reroll" : "Roll" }}
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="roll.notes"
+                  @click="openNotesModal(roll.name, roll.notes)"
+                  class="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-300 hover:text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
+                  v-tooltip.bottom="{ value: 'View notes', disabled: !tooltipsEnabled }"
+                >
+                  <i class="pi pi-file-edit text-xs"></i>
+                </button>
+                <button
+                  @click="triggerRoll(seqIndex, roll.id, completedRollIds.has(seqKey(seqIndex, roll.id)))"
+                  class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
+                >
+                  {{ completedRollIds.has(seqKey(seqIndex, roll.id)) ? "Reroll" : "Roll" }}
+                </button>
+              </div>
             </div>
 
             <!-- Dice grid - auto-fit to container width -->
@@ -597,6 +622,57 @@ const changeJourney = (id: string) => {
         </template>
       </div>
     </div>
+
+    <!-- Notes Modal (read-only) -->
+    <Teleport to="body">
+      <div
+        v-if="notesModalOpen"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+        @click="closeNotesModal"
+      >
+        <div
+          class="bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-lg mx-4"
+          @click.stop
+        >
+          <!-- Modal header -->
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
+            <h3 class="text-white font-medium">
+              Notes for {{ notesModalTitle }}
+            </h3>
+            <button
+              class="text-gray-400 hover:text-white transition-colors cursor-pointer"
+              @click="closeNotesModal"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+          <!-- Modal body -->
+          <div class="p-4">
+            <div
+              v-if="notesModalContent"
+              class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm whitespace-pre-wrap"
+            >
+              {{ notesModalContent }}
+            </div>
+            <div
+              v-else
+              class="w-full min-h-32 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-500 text-sm italic"
+            >
+              No notes for this roll.
+            </div>
+          </div>
+          <!-- Modal footer -->
+          <div class="flex justify-end px-4 py-3 border-t border-gray-600">
+            <button
+              class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors cursor-pointer"
+              @click="closeNotesModal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

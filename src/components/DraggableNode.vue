@@ -39,6 +39,8 @@ const dice = defineModel<Die[]>("dice", {
   default: () => [{ id: "1", count: 1, value: 6 }],
 });
 
+const notes = defineModel<string>("notes", { default: "" });
+
 const emit = defineEmits<{
   (e: "update:position", id: string, x: number, y: number): void;
   (
@@ -51,7 +53,7 @@ const emit = defineEmits<{
   ): void;
   (e: "connectionRemoved"): void;
   (e: "delete", id: string): void;
-  (e: "copy", nodeData: { name: string; x: number; y: number; dice: Die[] }): void;
+  (e: "copy", nodeData: { name: string; x: number; y: number; dice: Die[]; notes?: string }): void;
 }>();
 
 function deleteNode() {
@@ -64,6 +66,9 @@ const menuContainer = useTemplateRef<HTMLElement>("menuContainer");
 
 // Collapse state
 const collapsed = ref(false);
+
+// Notes modal state
+const notesModalOpen = ref(false);
 
 // Close menu when clicking outside
 onClickOutside(menuContainer, () => {
@@ -141,12 +146,17 @@ function handleCopy() {
     x: x.value + 30,
     y: y.value + 30,
     dice: clonedDice,
+    notes: notes.value,
   });
 }
 
 function handleNotes() {
   closeMenu();
-  // TODO: Implement notes functionality
+  notesModalOpen.value = true;
+}
+
+function closeNotesModal() {
+  notesModalOpen.value = false;
 }
 
 function handleCollapse() {
@@ -905,5 +915,49 @@ defineExpose({
         </tbody>
       </table>
     </div>
+
+    <!-- Notes Modal -->
+    <Teleport to="body">
+      <div
+        v-if="notesModalOpen"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+        @click="closeNotesModal"
+      >
+        <div
+          class="bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-lg mx-4"
+          @click.stop
+        >
+          <!-- Modal header -->
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
+            <h3 class="text-white font-medium">
+              Notes for {{ name || 'Unnamed Node' }}
+            </h3>
+            <button
+              class="text-gray-400 hover:text-white transition-colors cursor-pointer"
+              @click="closeNotesModal"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+          <!-- Modal body -->
+          <div class="p-4">
+            <textarea
+              v-model="notes"
+              class="w-full h-48 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
+              placeholder="Enter notes for this node..."
+            ></textarea>
+          </div>
+          <!-- Modal footer -->
+          <div class="flex justify-end px-4 py-3 border-t border-gray-600">
+            <button
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors cursor-pointer"
+              @click="closeNotesModal"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
