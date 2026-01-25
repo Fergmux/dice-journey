@@ -48,40 +48,44 @@ export function useConnectionLines(
       if (!nodeRef?.dice) continue;
 
       for (const die of nodeRef.dice) {
-        // Success connection
-        if (die.onSuccess?.rollId) {
-          const targetRef = nodeRefs.value[die.onSuccess.rollId];
-          if (targetRef) {
-            const sourcePos = nodeRef.getOutputCirclePosition(die.id, "success", containerEl);
-            const targetPos = targetRef.getInputCirclePosition(containerEl);
-            if (sourcePos && targetPos) {
-              lines.push({
-                id: `${node.id}-${die.id}-success`,
-                x1: sourcePos.x,
-                y1: sourcePos.y,
-                x2: targetPos.x,
-                y2: targetPos.y,
-                type: "success",
-              });
+        // Success connections (multiple)
+        if (die.onSuccess?.rollIds) {
+          for (const targetId of die.onSuccess.rollIds) {
+            const targetRef = nodeRefs.value[targetId];
+            if (targetRef) {
+              const sourcePos = nodeRef.getOutputCirclePosition(die.id, "success", containerEl);
+              const targetPos = targetRef.getInputCirclePosition(containerEl);
+              if (sourcePos && targetPos) {
+                lines.push({
+                  id: `${node.id}-${die.id}-success-${targetId}`,
+                  x1: sourcePos.x,
+                  y1: sourcePos.y,
+                  x2: targetPos.x,
+                  y2: targetPos.y,
+                  type: "success",
+                });
+              }
             }
           }
         }
 
-        // Failure connection
-        if (die.onFailure?.rollId) {
-          const targetRef = nodeRefs.value[die.onFailure.rollId];
-          if (targetRef) {
-            const sourcePos = nodeRef.getOutputCirclePosition(die.id, "failure", containerEl);
-            const targetPos = targetRef.getInputCirclePosition(containerEl);
-            if (sourcePos && targetPos) {
-              lines.push({
-                id: `${node.id}-${die.id}-failure`,
-                x1: sourcePos.x,
-                y1: sourcePos.y,
-                x2: targetPos.x,
-                y2: targetPos.y,
-                type: "failure",
-              });
+        // Failure connections (multiple)
+        if (die.onFailure?.rollIds) {
+          for (const targetId of die.onFailure.rollIds) {
+            const targetRef = nodeRefs.value[targetId];
+            if (targetRef) {
+              const sourcePos = nodeRef.getOutputCirclePosition(die.id, "failure", containerEl);
+              const targetPos = targetRef.getInputCirclePosition(containerEl);
+              if (sourcePos && targetPos) {
+                lines.push({
+                  id: `${node.id}-${die.id}-failure-${targetId}`,
+                  x1: sourcePos.x,
+                  y1: sourcePos.y,
+                  x2: targetPos.x,
+                  y2: targetPos.y,
+                  type: "failure",
+                });
+              }
             }
           }
         }

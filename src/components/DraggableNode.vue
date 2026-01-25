@@ -100,23 +100,34 @@ function isActiveSource(dieId: string, type: "success" | "failure") {
   );
 }
 
-// Remove a die's connection
-function removeDieConnection(dieId: string, type: "success" | "failure") {
+// Remove all connections for a die
+function removeAllDieConnections(dieId: string, type: "success" | "failure") {
   const die = dice.value?.find((d) => d.id === dieId);
   if (die) {
     if (type === "success" && die.onSuccess) {
-      die.onSuccess.rollId = undefined;
+      die.onSuccess.rollIds = [];
     } else if (type === "failure" && die.onFailure) {
-      die.onFailure.rollId = undefined;
+      die.onFailure.rollIds = [];
     }
   }
 }
 
-// Start a connection from a green/red circle, or remove if already active
+// Check if a die has any connections
+function hasConnections(dieId: string, type: "success" | "failure"): boolean {
+  const die = dice.value?.find((d) => d.id === dieId);
+  if (!die) return false;
+  if (type === "success") {
+    return (die.onSuccess?.rollIds?.length ?? 0) > 0;
+  } else {
+    return (die.onFailure?.rollIds?.length ?? 0) > 0;
+  }
+}
+
+// Start a connection from a green/red circle, or remove all if already active
 function handleCircleClick(dieId: string, type: "success" | "failure") {
-  // If this circle is already the active source, remove connection and cancel
+  // If this circle is already the active source, remove all connections and cancel
   if (isActiveSource(dieId, type)) {
-    removeDieConnection(dieId, type);
+    removeAllDieConnections(dieId, type);
     if (cancelConnection) {
       cancelConnection();
     }
@@ -138,7 +149,7 @@ function handleInputClick() {
   }
 }
 
-// Update a die's connection
+// Add a connection to a die (supports multiple connections)
 function setDieConnection(
   dieId: string,
   type: "success" | "failure",
@@ -147,15 +158,27 @@ function setDieConnection(
   const die = dice.value?.find((d) => d.id === dieId);
   if (die) {
     if (type === "success") {
-      die.onSuccess = {
-        message: die.onSuccess?.message ?? "",
-        rollId: targetNodeId,
-      };
+      if (!die.onSuccess) {
+        die.onSuccess = { message: "", rollIds: [] };
+      }
+      if (!die.onSuccess.rollIds) {
+        die.onSuccess.rollIds = [];
+      }
+      // Add if not already connected
+      if (!die.onSuccess.rollIds.includes(targetNodeId)) {
+        die.onSuccess.rollIds.push(targetNodeId);
+      }
     } else {
-      die.onFailure = {
-        message: die.onFailure?.message ?? "",
-        rollId: targetNodeId,
-      };
+      if (!die.onFailure) {
+        die.onFailure = { message: "", rollIds: [] };
+      }
+      if (!die.onFailure.rollIds) {
+        die.onFailure.rollIds = [];
+      }
+      // Add if not already connected
+      if (!die.onFailure.rollIds.includes(targetNodeId)) {
+        die.onFailure.rollIds.push(targetNodeId);
+      }
     }
   }
 }
@@ -397,12 +420,12 @@ defineExpose({
                       die.id,
                       'success',
                     ),
-                    'ring-1 ring-green-300': die.onSuccess?.rollId,
+                    'ring-1 ring-green-300': hasConnections(die.id, 'success'),
                   }"
                   v-tooltip.bottom="
                     tooltip(
-                      die.onSuccess?.rollId
-                        ? `Connected to node ${die.onSuccess.rollId}`
+                      hasConnections(die.id, 'success')
+                        ? `${die.onSuccess?.rollIds?.length} connection(s) - click to add more or remove all`
                         : 'Click to connect success',
                     )
                   "
@@ -417,12 +440,12 @@ defineExpose({
                       die.id,
                       'failure',
                     ),
-                    'ring-1 ring-red-300': die.onFailure?.rollId,
+                    'ring-1 ring-red-300': hasConnections(die.id, 'failure'),
                   }"
                   v-tooltip.bottom="
                     tooltip(
-                      die.onFailure?.rollId
-                        ? `Connected to node ${die.onFailure.rollId}`
+                      hasConnections(die.id, 'failure')
+                        ? `${die.onFailure?.rollIds?.length} connection(s) - click to add more or remove all`
                         : 'Click to connect failure',
                     )
                   "
