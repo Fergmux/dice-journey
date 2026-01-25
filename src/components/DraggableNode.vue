@@ -8,7 +8,7 @@ import {
   useTemplateRef,
 } from "vue";
 
-import { useDraggable } from "@vueuse/core";
+import { useDraggable, onClickOutside } from "@vueuse/core";
 
 import type { Die } from "../Config";
 
@@ -52,6 +52,45 @@ const emit = defineEmits<{
 
 function deleteNode() {
   emit("delete", props.id);
+}
+
+// Menu state
+const menuOpen = ref(false);
+const menuContainer = useTemplateRef<HTMLElement>("menuContainer");
+
+// Close menu when clicking outside
+onClickOutside(menuContainer, () => {
+  if (menuOpen.value) {
+    menuOpen.value = false;
+  }
+});
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+}
+
+function closeMenu() {
+  menuOpen.value = false;
+}
+
+function handleDelete() {
+  closeMenu();
+  deleteNode();
+}
+
+function handleCopy() {
+  closeMenu();
+  // TODO: Implement copy functionality
+}
+
+function handleNotes() {
+  closeMenu();
+  // TODO: Implement notes functionality
+}
+
+function handleCollapse() {
+  closeMenu();
+  // TODO: Implement collapse functionality
 }
 
 // Inject connection state and methods from Builder
@@ -400,14 +439,52 @@ defineExpose({
         <i class="pi pi-plus"></i>
       </button>
 
-      <!-- Delete button -->
-      <button
-        class="py-2 px-3 text-gray-300 bg-gray-600 hover:text-red-400 hover:bg-red-900/50 rounded shadow-lg transition-colors cursor-pointer"
-        @click.stop="deleteNode"
-        v-tooltip.bottom="tooltip('Delete node')"
-      >
-        <i class="pi pi-trash"></i>
-      </button>
+      <!-- Menu button -->
+      <div ref="menuContainer" class="relative">
+        <button
+          class="py-2 px-3 text-gray-300 bg-gray-600 hover:text-white hover:bg-gray-500 rounded shadow-lg transition-colors cursor-pointer"
+          @click.stop="toggleMenu"
+          v-tooltip.bottom="tooltip('Options')"
+        >
+          <i class="pi pi-ellipsis-v"></i>
+        </button>
+
+        <!-- Dropdown menu -->
+        <div
+          v-if="menuOpen"
+          class="absolute right-0 top-full mt-1 w-36 bg-gray-700 rounded-lg shadow-xl border border-gray-600 z-50 overflow-hidden"
+        >
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2 transition-colors cursor-pointer"
+            @click.stop="handleCopy"
+          >
+            <i class="pi pi-copy text-xs"></i>
+            Copy
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2 transition-colors cursor-pointer"
+            @click.stop="handleNotes"
+          >
+            <i class="pi pi-file-edit text-xs"></i>
+            Notes
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2 transition-colors cursor-pointer"
+            @click.stop="handleCollapse"
+          >
+            <i class="pi pi-minus text-xs"></i>
+            Collapse
+          </button>
+          <div class="border-t border-gray-600"></div>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-900/50 flex items-center gap-2 transition-colors cursor-pointer"
+            @click.stop="handleDelete"
+          >
+            <i class="pi pi-trash text-xs"></i>
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Dice table -->
@@ -469,6 +546,7 @@ defineExpose({
                   <option value="10">10</option>
                   <option value="12">12</option>
                   <option value="20">20</option>
+                  <option value="100">100</option>
                 </select>
               </div>
             </td>

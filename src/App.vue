@@ -1,13 +1,9 @@
 <script setup lang="ts">
-// TODO: Save roll state on builder tab swap
-// More responsive grid layout for roller
 // Create node from connection click/play space click
 // Copy node
 // d100
-// ranges 
 // small mode/collapsible
 // notes
-// History
 // Circular dependencies
 // Custom colours
 
