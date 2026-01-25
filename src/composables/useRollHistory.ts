@@ -2,16 +2,30 @@ import { computed } from "vue";
 
 import { useLocalStorage } from "@vueuse/core";
 
+export interface RangeResult {
+  id: string;
+  min: number;
+  max: number;
+  label?: string;
+  message?: string;
+  matched: boolean;
+}
+
 export interface DieResult {
   id: string;
   name?: string;
   value: number;
   count: number;
+  // Threshold mode
   success?: number;
-  results: number[];
-  total: number;
   isSuccess: boolean;
   message?: string;
+  // Range mode
+  mode?: 'threshold' | 'range';
+  matchedRanges?: RangeResult[];
+  // Common
+  results: number[];
+  total: number;
 }
 
 export interface RollResult {

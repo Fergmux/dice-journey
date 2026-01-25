@@ -98,7 +98,8 @@ function setNodeRef(id: string, el: InstanceType<typeof DraggableNode> | null) {
 export interface PendingConnection {
   sourceNodeId: string;
   dieId: string;
-  type: "success" | "failure";
+  type: "success" | "failure" | "range";
+  rangeId?: string;
 }
 
 const pendingConnection = ref<PendingConnection | null>(null);
@@ -106,9 +107,10 @@ const pendingConnection = ref<PendingConnection | null>(null);
 function startConnection(
   sourceNodeId: string,
   dieId: string,
-  type: "success" | "failure",
+  type: "success" | "failure" | "range",
+  rangeId?: string,
 ) {
-  pendingConnection.value = { sourceNodeId, dieId, type };
+  pendingConnection.value = { sourceNodeId, dieId, type, rangeId };
 }
 
 function cancelConnection() {
@@ -136,14 +138,15 @@ function deleteNode(id: string) {
 function handleConnectionComplete(
   sourceNodeId: string,
   dieId: string,
-  type: "success" | "failure",
+  type: "success" | "failure" | "range",
   targetNodeId: string,
+  rangeId?: string,
 ) {
   const sourceNode = nodeRefs.value[sourceNodeId];
   if (sourceNode) {
-    sourceNode.setDieConnection(dieId, type, targetNodeId);
+    sourceNode.setDieConnection(dieId, type, targetNodeId, rangeId);
     console.log(
-      `Connected: Node ${sourceNodeId}, Die ${dieId} -> ${type} -> Node ${targetNodeId}`,
+      `Connected: Node ${sourceNodeId}, Die ${dieId} -> ${type}${rangeId ? ` (range: ${rangeId})` : ''} -> Node ${targetNodeId}`,
     );
     // Update lines after connection is made
     nextTick(() => updateConnectionLines());
@@ -223,11 +226,11 @@ function handleContainerClick() {
       <i class="pi pi-link mr-2"></i>
       Connecting
       <span
-        :class="
-          pendingConnection.type === 'success'
-            ? 'text-green-800'
-            : 'text-red-800'
-        "
+        :class="[
+          pendingConnection.type === 'success' ? 'text-green-800' : '',
+          pendingConnection.type === 'failure' ? 'text-red-800' : '',
+          pendingConnection.type === 'range' ? 'text-purple-800' : '',
+        ]"
         class="font-bold"
       >
         {{ pendingConnection.type }}
@@ -268,6 +271,17 @@ function handleContainerClick() {
           >
             <path d="M0,0 L0,6 L9,3 z" fill="#e7000b" />
           </marker>
+          <marker
+            id="arrow-range"
+            markerWidth="10"
+            markerHeight="10"
+            refX="9"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L0,6 L9,3 z" fill="#9333ea" />
+          </marker>
         </defs>
 
         <!-- Connection lines -->
@@ -278,7 +292,7 @@ function handleContainerClick() {
           :y1="line.y1"
           :x2="line.x2"
           :y2="line.y2"
-          :stroke="line.type === 'success' ? '#00a63e' : '#e7000b'"
+          :stroke="line.type === 'success' ? '#00a63e' : line.type === 'failure' ? '#e7000b' : '#9333ea'"
           stroke-width="2"
           :marker-end="`url(#arrow-${line.type})`"
         />
@@ -298,7 +312,7 @@ function handleContainerClick() {
         :container="container"
         @update:position="updateNodePosition"
         @connection-complete="handleConnectionComplete"
-        @connection-removed="updateConnectionLines"
+        @connection-removed="() => nextTick(() => updateConnectionLines())"
         @delete="deleteNode"
       />
     </div>

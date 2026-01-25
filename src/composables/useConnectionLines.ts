@@ -11,7 +11,7 @@ export interface ConnectionLine {
   y1: number;
   x2: number;
   y2: number;
-  type: "success" | "failure";
+  type: "success" | "failure" | "range";
 }
 
 interface NodeWithDice {
@@ -23,8 +23,9 @@ interface NodeRef {
   dice?: Die[];
   getOutputCirclePosition(
     dieId: string,
-    type: "success" | "failure",
-    container: HTMLElement
+    type: "success" | "failure" | "range",
+    container: HTMLElement,
+    rangeId?: string
   ): { x: number; y: number } | null;
   getInputCirclePosition(
     container: HTMLElement
@@ -48,8 +49,8 @@ export function useConnectionLines(
       if (!nodeRef?.dice) continue;
 
       for (const die of nodeRef.dice) {
-        // Success connections (multiple)
-        if (die.onSuccess?.rollIds) {
+        // Success connections (multiple) - only for threshold mode
+        if (die.mode !== 'range' && die.onSuccess?.rollIds) {
           for (const targetId of die.onSuccess.rollIds) {
             const targetRef = nodeRefs.value[targetId];
             if (targetRef) {
@@ -69,8 +70,8 @@ export function useConnectionLines(
           }
         }
 
-        // Failure connections (multiple)
-        if (die.onFailure?.rollIds) {
+        // Failure connections (multiple) - only for threshold mode
+        if (die.mode !== 'range' && die.onFailure?.rollIds) {
           for (const targetId of die.onFailure.rollIds) {
             const targetRef = nodeRefs.value[targetId];
             if (targetRef) {
@@ -85,6 +86,31 @@ export function useConnectionLines(
                   y2: targetPos.y,
                   type: "failure",
                 });
+              }
+            }
+          }
+        }
+
+        // Range connections - only for range mode
+        if (die.mode === 'range' && die.ranges) {
+          for (const range of die.ranges) {
+            if (range.rollIds) {
+              for (const targetId of range.rollIds) {
+                const targetRef = nodeRefs.value[targetId];
+                if (targetRef) {
+                  const sourcePos = nodeRef.getOutputCirclePosition(die.id, "range", containerEl, range.id);
+                  const targetPos = targetRef.getInputCirclePosition(containerEl);
+                  if (sourcePos && targetPos) {
+                    lines.push({
+                      id: `${node.id}-${die.id}-range-${range.id}-${targetId}`,
+                      x1: sourcePos.x,
+                      y1: sourcePos.y,
+                      x2: targetPos.x,
+                      y2: targetPos.y,
+                      type: "range",
+                    });
+                  }
+                }
               }
             }
           }

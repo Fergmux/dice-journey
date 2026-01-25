@@ -70,7 +70,7 @@ const allDice = computed(() => {
   );
 });
 
-// Find root rolls (not referenced by any dice's onSuccess/onFailure)
+// Find root rolls (not referenced by any dice's onSuccess/onFailure/ranges)
 const rootRolls = computed(() => {
   if (!currentJourney.value) return [];
 
@@ -78,11 +78,20 @@ const rootRolls = computed(() => {
   const referencedRollIds = new Set<string>();
   for (const roll of currentJourney.value.rolls) {
     for (const die of roll.dice) {
+      // Threshold mode connections
       if (die.onSuccess?.rollIds) {
         die.onSuccess.rollIds.forEach((id) => referencedRollIds.add(id));
       }
       if (die.onFailure?.rollIds) {
         die.onFailure.rollIds.forEach((id) => referencedRollIds.add(id));
+      }
+      // Range mode connections
+      if (die.ranges) {
+        for (const range of die.ranges) {
+          if (range.rollIds) {
+            range.rollIds.forEach((id) => referencedRollIds.add(id));
+          }
+        }
       }
     }
   }
@@ -119,6 +128,7 @@ const rollSequences = computed(() => {
 
         // Add connected rolls to queue (supports multiple connections)
         for (const die of roll.dice) {
+          // Threshold mode connections
           if (die.onSuccess?.rollIds) {
             for (const targetId of die.onSuccess.rollIds) {
               if (!visited.has(targetId)) {
@@ -130,6 +140,18 @@ const rollSequences = computed(() => {
             for (const targetId of die.onFailure.rollIds) {
               if (!visited.has(targetId)) {
                 queue.push(targetId);
+              }
+            }
+          }
+          // Range mode connections
+          if (die.ranges) {
+            for (const range of die.ranges) {
+              if (range.rollIds) {
+                for (const targetId of range.rollIds) {
+                  if (!visited.has(targetId)) {
+                    queue.push(targetId);
+                  }
+                }
               }
             }
           }
@@ -151,7 +173,20 @@ const getResultTotal = (seqIndex: number, diceId: string) => {
 };
 
 const getResultSuccess = (seqIndex: number, diceId: string) => {
-  return getResultTotal(seqIndex, diceId) >= (allDice.value[diceId]?.success ?? 0);
+  const die = allDice.value[diceId];
+  if (!die) return false;
+  // For range mode, success doesn't apply the same way
+  if (die.mode === 'range') return true;
+  return getResultTotal(seqIndex, diceId) >= (die.success ?? 0);
+};
+
+// Get all matching ranges for a die result
+const getMatchingRanges = (seqIndex: number, diceId: string) => {
+  const die = allDice.value[diceId];
+  if (!die?.ranges || die.mode !== 'range') return [];
+  
+  const total = getResultTotal(seqIndex, diceId);
+  return die.ranges.filter((range) => total >= range.min && total <= range.max);
 };
 
 const hasResult = (seqIndex: number, diceId: string) => {
@@ -188,14 +223,27 @@ const getDownstreamRollsInSequence = (seqIndex: number, rollId: string, visited 
   const roll = currentJourney.value.rolls.find((r) => r.id === rollId);
   if (roll) {
     for (const die of roll.dice) {
-      if (die.onSuccess?.rollIds) {
-        for (const targetId of die.onSuccess.rollIds) {
-          getDownstreamRollsInSequence(seqIndex, targetId, visited);
+      // Threshold mode connections
+      if (die.mode !== 'range') {
+        if (die.onSuccess?.rollIds) {
+          for (const targetId of die.onSuccess.rollIds) {
+            getDownstreamRollsInSequence(seqIndex, targetId, visited);
+          }
+        }
+        if (die.onFailure?.rollIds) {
+          for (const targetId of die.onFailure.rollIds) {
+            getDownstreamRollsInSequence(seqIndex, targetId, visited);
+          }
         }
       }
-      if (die.onFailure?.rollIds) {
-        for (const targetId of die.onFailure.rollIds) {
-          getDownstreamRollsInSequence(seqIndex, targetId, visited);
+      // Range mode connections
+      if (die.mode === 'range' && die.ranges) {
+        for (const range of die.ranges) {
+          if (range.rollIds) {
+            for (const targetId of range.rollIds) {
+              getDownstreamRollsInSequence(seqIndex, targetId, visited);
+            }
+          }
         }
       }
     }
@@ -212,18 +260,45 @@ const buildRollResult = (seqIndex: number, rollId: string): RollResult | null =>
   const diceResults: DieResult[] = roll.dice.map((dice) => {
     const results = getResults(seqIndex, dice.id);
     const total = results.reduce((a, b) => a + b, 0);
-    const isSuccess = dice.success ? total >= dice.success : true;
-    return {
-      id: dice.id,
-      name: dice.name,
-      value: dice.value,
-      count: dice.count,
-      success: dice.success,
-      results: [...results],
-      total,
-      isSuccess,
-      message: isSuccess ? dice.onSuccess?.message : dice.onFailure?.message,
-    };
+    
+    if (dice.mode === 'range') {
+      // Range mode - calculate matched ranges
+      const matchedRanges = (dice.ranges ?? []).map((range) => ({
+        id: range.id,
+        min: range.min,
+        max: range.max,
+        label: range.label,
+        message: range.message,
+        matched: total >= range.min && total <= range.max,
+      }));
+      
+      return {
+        id: dice.id,
+        name: dice.name,
+        value: dice.value,
+        count: dice.count,
+        mode: 'range' as const,
+        results: [...results],
+        total,
+        isSuccess: matchedRanges.some((r) => r.matched),
+        matchedRanges,
+      };
+    } else {
+      // Threshold mode
+      const isSuccess = dice.success ? total >= dice.success : true;
+      return {
+        id: dice.id,
+        name: dice.name,
+        value: dice.value,
+        count: dice.count,
+        mode: 'threshold' as const,
+        success: dice.success,
+        results: [...results],
+        total,
+        isSuccess,
+        message: isSuccess ? dice.onSuccess?.message : dice.onFailure?.message,
+      };
+    }
   });
 
   return {
@@ -271,21 +346,39 @@ const triggerRoll = (seqIndex: number, rollId?: string, isReroll = false, isPart
 
       // Trigger chained rolls (supports multiple connections)
       roll.dice.forEach((dice) => {
-        if (getResultSuccess(seqIndex, dice.id) && dice.onSuccess?.rollIds) {
-          for (const targetId of dice.onSuccess.rollIds) {
-            // Only trigger if target is in this sequence
-            const sequence = rollSequences.value[seqIndex];
-            if (sequence?.some((r) => r.id === targetId)) {
-              triggerRoll(seqIndex, targetId, false, true);
+        // Threshold mode
+        if (dice.mode !== 'range') {
+          if (getResultSuccess(seqIndex, dice.id) && dice.onSuccess?.rollIds) {
+            for (const targetId of dice.onSuccess.rollIds) {
+              // Only trigger if target is in this sequence
+              const sequence = rollSequences.value[seqIndex];
+              if (sequence?.some((r) => r.id === targetId)) {
+                triggerRoll(seqIndex, targetId, false, true);
+              }
+            }
+          }
+          if (!getResultSuccess(seqIndex, dice.id) && dice.onFailure?.rollIds) {
+            for (const targetId of dice.onFailure.rollIds) {
+              // Only trigger if target is in this sequence
+              const sequence = rollSequences.value[seqIndex];
+              if (sequence?.some((r) => r.id === targetId)) {
+                triggerRoll(seqIndex, targetId, false, true);
+              }
             }
           }
         }
-        if (!getResultSuccess(seqIndex, dice.id) && dice.onFailure?.rollIds) {
-          for (const targetId of dice.onFailure.rollIds) {
-            // Only trigger if target is in this sequence
-            const sequence = rollSequences.value[seqIndex];
-            if (sequence?.some((r) => r.id === targetId)) {
-              triggerRoll(seqIndex, targetId, false, true);
+        // Range mode - trigger all matching ranges
+        if (dice.mode === 'range' && dice.ranges) {
+          const matchingRanges = getMatchingRanges(seqIndex, dice.id);
+          for (const range of matchingRanges) {
+            if (range.rollIds) {
+              for (const targetId of range.rollIds) {
+                // Only trigger if target is in this sequence
+                const sequence = rollSequences.value[seqIndex];
+                if (sequence?.some((r) => r.id === targetId)) {
+                  triggerRoll(seqIndex, targetId, false, true);
+                }
+              }
             }
           }
         }
@@ -403,9 +496,11 @@ const changeJourney = (id: string) => {
                 :class="
                   !hasResult(seqIndex, die.id)
                     ? 'border-gray-600'
-                    : getResultSuccess(seqIndex, die.id)
-                      ? 'border-green-500'
-                      : 'border-red-500'
+                    : die.mode === 'range'
+                      ? (getMatchingRanges(seqIndex, die.id).length > 0 ? 'border-purple-500' : 'border-gray-500')
+                      : getResultSuccess(seqIndex, die.id)
+                        ? 'border-green-500'
+                        : 'border-red-500'
                 "
               >
                 <!-- Die header -->
@@ -451,26 +546,45 @@ const changeJourney = (id: string) => {
                     <span
                       class="font-bold text-lg"
                       :class="
-                        getResultSuccess(seqIndex, die.id) ? 'text-green-400' : 'text-red-400'
+                        die.mode === 'range'
+                          ? (getMatchingRanges(seqIndex, die.id).length > 0 ? 'text-purple-400' : 'text-gray-400')
+                          : getResultSuccess(seqIndex, die.id) ? 'text-green-400' : 'text-red-400'
                       "
                     >
                       {{ getResultTotal(seqIndex, die.id) }}
                     </span>
                   </div>
 
-                  <!-- Result message -->
-                  <div
-                    v-if="getResultSuccess(seqIndex, die.id) && die.onSuccess?.message"
-                    class="mt-2 p-2 bg-green-900/50 border border-green-700 rounded text-green-300 text-sm"
-                  >
-                    {{ die.onSuccess.message }}
-                  </div>
-                  <div
-                    v-else-if="!getResultSuccess(seqIndex, die.id) && die.onFailure?.message"
-                    class="mt-2 p-2 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm"
-                  >
-                    {{ die.onFailure.message }}
-                  </div>
+                  <!-- Result message - Threshold mode -->
+                  <template v-if="die.mode !== 'range'">
+                    <div
+                      v-if="getResultSuccess(seqIndex, die.id) && die.onSuccess?.message"
+                      class="mt-2 p-2 bg-green-900/50 border border-green-700 rounded text-green-300 text-sm"
+                    >
+                      {{ die.onSuccess.message }}
+                    </div>
+                    <div
+                      v-else-if="!getResultSuccess(seqIndex, die.id) && die.onFailure?.message"
+                      class="mt-2 p-2 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm"
+                    >
+                      {{ die.onFailure.message }}
+                    </div>
+                  </template>
+
+                  <!-- Result messages - Range mode (show all matching ranges) -->
+                  <template v-else-if="die.mode === 'range'">
+                    <template 
+                      v-for="range in getMatchingRanges(seqIndex, die.id)"
+                      :key="range.id"
+                    >
+                      <div
+                        v-if="range.message"
+                        class="mt-2 p-2 bg-purple-900/50 border border-purple-700 rounded text-purple-300 text-sm"
+                      >
+                        {{ range.message }}
+                      </div>
+                    </template>
+                  </template>
                 </div>
 
                 <!-- Not rolled yet -->

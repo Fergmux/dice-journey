@@ -277,13 +277,17 @@ const getSessionSummary = (session: HistorySession) => {
                     v-for="die in roll.dice"
                     :key="die.id"
                     class="p-2 rounded border"
-                    :class="die.isSuccess ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'"
+                    :class="
+                      die.mode === 'range'
+                        ? (die.isSuccess ? 'bg-purple-900/20 border-purple-500/30' : 'bg-gray-900/20 border-gray-500/30')
+                        : (die.isSuccess ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30')
+                    "
                   >
                     <!-- Die header -->
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-gray-400 text-xs font-mono">
                         {{ die.count }}d{{ die.value }}
-                        <span v-if="die.success" class="text-gray-500">(≥{{ die.success }})</span>
+                        <span v-if="die.mode !== 'range' && die.success" class="text-gray-500">(≥{{ die.success }})</span>
                       </span>
                     </div>
 
@@ -308,24 +312,45 @@ const getSessionSummary = (session: HistorySession) => {
                       <span class="text-gray-400 text-xs">Total:</span>
                       <span
                         class="font-bold text-sm"
-                        :class="die.isSuccess ? 'text-green-400' : 'text-red-400'"
+                        :class="
+                          die.mode === 'range'
+                            ? (die.isSuccess ? 'text-purple-400' : 'text-gray-400')
+                            : (die.isSuccess ? 'text-green-400' : 'text-red-400')
+                        "
                       >
                         {{ die.total }}
                       </span>
                     </div>
 
-                    <!-- Result message -->
-                    <div
-                      v-if="die.message"
-                      class="mt-1 p-1 rounded text-xs"
-                      :class="
-                        die.isSuccess
-                          ? 'bg-green-900/50 text-green-300'
-                          : 'bg-red-900/50 text-red-300'
-                      "
-                    >
-                      {{ die.message }}
-                    </div>
+                    <!-- Result message - Threshold mode -->
+                    <template v-if="die.mode !== 'range'">
+                      <div
+                        v-if="die.message"
+                        class="mt-1 p-1 rounded text-xs"
+                        :class="
+                          die.isSuccess
+                            ? 'bg-green-900/50 text-green-300'
+                            : 'bg-red-900/50 text-red-300'
+                        "
+                      >
+                        {{ die.message }}
+                      </div>
+                    </template>
+
+                    <!-- Result messages - Range mode (show matched ranges) -->
+                    <template v-else-if="die.matchedRanges">
+                      <template
+                      v-for="range in die.matchedRanges.filter(r => r.matched)"
+                      :key="range.id"
+                      >
+                        <div
+                          v-if="range.message"
+                          class="mt-1 p-1 rounded text-xs bg-purple-900/50 text-purple-300"
+                        >
+                          {{ range.message }}
+                        </div>
+                      </template>
+                    </template>
                   </div>
                 </div>
               </div>
