@@ -8,7 +8,10 @@ import {
   useTemplateRef,
 } from "vue";
 
-import { useDraggable, onClickOutside } from "@vueuse/core";
+import {
+  onClickOutside,
+  useDraggable,
+} from "@vueuse/core";
 
 import type { Die } from "../Config";
 
@@ -48,6 +51,7 @@ const emit = defineEmits<{
   ): void;
   (e: "connectionRemoved"): void;
   (e: "delete", id: string): void;
+  (e: "copy", nodeData: { name: string; x: number; y: number; dice: Die[] }): void;
 }>();
 
 function deleteNode() {
@@ -80,7 +84,61 @@ function handleDelete() {
 
 function handleCopy() {
   closeMenu();
-  // TODO: Implement copy functionality
+  
+  // Generate a new base ID for the copied node
+  const newNodeId = `roll-${Date.now()}`;
+  
+  // Deep clone dice with new IDs and cleared connections
+  const clonedDice: Die[] = (dice.value ?? []).map((die, dieIndex) => {
+    const newDieId = `${newNodeId}-die-${dieIndex + 1}`;
+    
+    const clonedDie: Die = {
+      id: newDieId,
+      name: die.name,
+      value: die.value,
+      count: die.count,
+      mode: die.mode,
+      success: die.success,
+    };
+    
+    // Clone onSuccess without rollIds (no connections)
+    if (die.onSuccess) {
+      clonedDie.onSuccess = {
+        message: die.onSuccess.message,
+        rollIds: [], // Clear connections
+      };
+    }
+    
+    // Clone onFailure without rollIds (no connections)
+    if (die.onFailure) {
+      clonedDie.onFailure = {
+        message: die.onFailure.message,
+        rollIds: [], // Clear connections
+      };
+    }
+    
+    // Clone ranges with new IDs and cleared connections
+    if (die.ranges) {
+      clonedDie.ranges = die.ranges.map((range, rangeIndex) => ({
+        id: `${newDieId}-range-${rangeIndex + 1}`,
+        min: range.min,
+        max: range.max,
+        label: range.label,
+        message: range.message,
+        rollIds: [], // Clear connections
+      }));
+    }
+    
+    return clonedDie;
+  });
+  
+  // Emit with offset position so the copy doesn't overlap exactly
+  emit("copy", {
+    name: name.value ? `${name.value} (copy)` : "",
+    x: x.value + 30,
+    y: y.value + 30,
+    dice: clonedDice,
+  });
 }
 
 function handleNotes() {

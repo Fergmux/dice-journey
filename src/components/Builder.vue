@@ -134,6 +134,18 @@ function deleteNode(id: string) {
   updateConnectionLines();
 }
 
+function copyNode(nodeData: { name: string; x: number; y: number; dice: import("../Config").Die[] }) {
+  const newRoll = {
+    id: `roll-${Date.now()}`,
+    name: nodeData.name,
+    x: nodeData.x,
+    y: nodeData.y,
+    dice: nodeData.dice,
+  };
+  addRoll(newRoll);
+  nextTick(() => updateConnectionLines());
+}
+
 // Handle connection completion
 function handleConnectionComplete(
   sourceNodeId: string,
@@ -314,6 +326,7 @@ function handleContainerClick() {
         @connection-complete="handleConnectionComplete"
         @connection-removed="() => nextTick(() => updateConnectionLines())"
         @delete="deleteNode"
+        @copy="copyNode"
       />
     </div>
   </div>
