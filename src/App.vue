@@ -1,20 +1,15 @@
 <script setup lang="ts">
-// Custom colours?
-// Refactor components
-
 import {
   computed,
   provide,
 } from "vue";
 
-import {
-  useRoute,
-  useRouter,
-} from "vue-router";
+import { useRoute } from "vue-router";
 
 import { useLocalStorage } from "@vueuse/core";
 
-const router = useRouter();
+import NavButton from "./components/NavButton.vue";
+
 const route = useRoute();
 
 const isHome = computed(() => route.path === "/");
@@ -31,54 +26,10 @@ provide("tooltipsEnabled", tooltipsEnabled);
   >
     <!-- Navigation buttons (left) -->
     <div class="flex items-center gap-2">
-      <button
-        @click="router.push('/')"
-        class="px-3 py-2 font-medium rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-        :class="
-          isHome
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-        "
-      >
-        <i class="pi pi-home"></i>
-        Home
-      </button>
-      <button
-        @click="router.push('/builder')"
-        class="px-3 py-2 font-medium rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-        :class="
-          isBuilder
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-        "
-      >
-        <i class="pi pi-sitemap"></i>
-        Builder
-      </button>
-      <button
-        @click="router.push('/roller')"
-        class="px-3 py-2 font-medium rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-        :class="
-          isRoller
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-        "
-      >
-        <i class="pi pi-box"></i>
-        Roller
-      </button>
-      <button
-        @click="router.push('/history')"
-        class="px-3 py-2 font-medium rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-        :class="
-          isHistory
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-        "
-      >
-        <i class="pi pi-history"></i>
-        History
-      </button>
+      <NavButton to="/" icon="pi-home" label="Home" :active="isHome" />
+      <NavButton to="/builder" icon="pi-sitemap" label="Builder" :active="isBuilder" />
+      <NavButton to="/roller" icon="pi-box" label="Roller" :active="isRoller" />
+      <NavButton to="/history" icon="pi-history" label="History" :active="isHistory" />
     </div>
 
     <!-- Title (centered absolutely) -->

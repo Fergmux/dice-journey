@@ -14,6 +14,8 @@ import {
 } from "@vueuse/core";
 
 import type { Die } from "../Config";
+import { useNotesModal } from "../composables/useNotesModal";
+import { useTooltip } from "../composables/useTooltip";
 import BaseModal from "./BaseModal.vue";
 
 interface PendingConnection {
@@ -23,11 +25,7 @@ interface PendingConnection {
   rangeId?: string; // For range connections
 }
 
-const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
-
-function tooltip(value: string) {
-  return { value, disabled: !tooltipsEnabled.value };
-}
+const { tooltip } = useTooltip();
 
 const props = defineProps<{
   id: string;
@@ -69,7 +67,7 @@ const menuContainer = useTemplateRef<HTMLElement>("menuContainer");
 const collapsed = ref(false);
 
 // Notes modal state
-const notesModalOpen = ref(false);
+const { notesModalOpen, notesModalTitle, openNotesModal: openModal, closeNotesModal } = useNotesModal();
 
 // Close menu when clicking outside
 onClickOutside(menuContainer, () => {
@@ -153,11 +151,7 @@ function handleCopy() {
 
 function handleNotes() {
   closeMenu();
-  notesModalOpen.value = true;
-}
-
-function closeNotesModal() {
-  notesModalOpen.value = false;
+  openModal(`Notes for ${name.value || 'Unnamed Node'}`);
 }
 
 function handleCollapse() {
@@ -934,7 +928,7 @@ defineExpose({
     <!-- Notes Modal -->
     <BaseModal
       v-if="notesModalOpen"
-      :title="`Notes for ${name || 'Unnamed Node'}`"
+      :title="notesModalTitle"
       @close="closeNotesModal"
     >
       <textarea

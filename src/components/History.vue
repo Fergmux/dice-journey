@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
-  inject,
   ref,
-  type Ref,
 } from "vue";
 
 import { useJourneyStorage } from "../composables/useJourneyStorage";
@@ -11,12 +9,14 @@ import {
   type HistorySession,
   useRollHistory,
 } from "../composables/useRollHistory";
+import { useTooltip } from "../composables/useTooltip";
 import BaseModal from "./BaseModal.vue";
+import DieResultDisplay from "./DieResultDisplay.vue";
 import JourneyTabs from "./JourneyTabs.vue";
 
 const { journeyList, currentJourney, setCurrentJourney } = useJourneyStorage();
 
-const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
+const { tooltip } = useTooltip();
 const {
   getJourneyHistory,
   removeHistorySession,
@@ -168,7 +168,7 @@ const getSessionSummary = (session: HistorySession) => {
           v-if="currentHistory.length > 0"
           @click="requestClear('journey')"
           class="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-sm rounded shadow transition-colors cursor-pointer"
-          v-tooltip.bottom="{ value: 'Clear all history entries for this scenario', disabled: !tooltipsEnabled }"
+          v-tooltip.bottom="tooltip('Clear all history entries for this scenario')"
         >
           Clear Scenario History
         </button>
@@ -176,7 +176,7 @@ const getSessionSummary = (session: HistorySession) => {
           v-if="totalHistoryCount > 0"
           @click="requestClear('all')"
           class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded shadow transition-colors cursor-pointer"
-          v-tooltip.bottom="{ value: 'Clear all history for all scenarios', disabled: !tooltipsEnabled }"
+          v-tooltip.bottom="tooltip('Clear all history for all scenarios')"
         >
           Clear All History
         </button>
@@ -266,7 +266,7 @@ const getSessionSummary = (session: HistorySession) => {
               <button
                 @click="removeHistorySession(session.journeyId, session.id)"
                 class="p-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-700 rounded transition-colors cursor-pointer"
-                v-tooltip.bottom="{ value: 'Remove this history entry', disabled: !tooltipsEnabled }"
+                v-tooltip.bottom="tooltip('Remove this history entry')"
               >
                 <i class="pi pi-trash text-sm"></i>
               </button>
@@ -316,61 +316,16 @@ const getSessionSummary = (session: HistorySession) => {
                       {{ die.name }}
                     </p>
 
-                    <!-- Individual rolls -->
-                    <div class="flex flex-wrap gap-1 mb-1">
-                      <span
-                        v-for="(result, index) in die.results"
-                        :key="index"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-700 text-white font-bold text-xs"
-                      >
-                        {{ result }}
-                      </span>
-                    </div>
-
-                    <!-- Total -->
-                    <div class="flex items-center justify-between pt-1 border-t border-gray-700">
-                      <span class="text-gray-400 text-xs">Total:</span>
-                      <span
-                        class="font-bold text-sm"
-                        :class="
-                          die.mode === 'range'
-                            ? (die.isSuccess ? 'text-purple-400' : 'text-gray-400')
-                            : (die.isSuccess ? 'text-green-400' : 'text-red-400')
-                        "
-                      >
-                        {{ die.total }}
-                      </span>
-                    </div>
-
-                    <!-- Result message - Threshold mode -->
-                    <template v-if="die.mode !== 'range'">
-                      <div
-                        v-if="die.message"
-                        class="mt-1 p-1 rounded text-xs"
-                        :class="
-                          die.isSuccess
-                            ? 'bg-green-900/50 text-green-300'
-                            : 'bg-red-900/50 text-red-300'
-                        "
-                      >
-                        {{ die.message }}
-                      </div>
-                    </template>
-
-                    <!-- Result messages - Range mode (show matched ranges) -->
-                    <template v-else-if="die.matchedRanges">
-                      <template
-                      v-for="range in die.matchedRanges.filter(r => r.matched)"
-                      :key="range.id"
-                      >
-                        <div
-                          v-if="range.message"
-                          class="mt-1 p-1 rounded text-xs bg-purple-900/50 text-purple-300"
-                        >
-                          {{ range.message }}
-                        </div>
-                      </template>
-                    </template>
+                    <!-- Die results -->
+                    <DieResultDisplay
+                      :results="die.results"
+                      :total="die.total"
+                      :is-success="die.isSuccess"
+                      :mode="die.mode ?? 'threshold'"
+                      :message="die.message"
+                      :matched-ranges="die.matchedRanges"
+                      compact
+                    />
                   </div>
                 </div>
               </div>

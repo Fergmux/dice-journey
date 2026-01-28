@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
-  inject,
   ref,
-  type Ref,
 } from "vue";
 
 import { useLocalStorage } from "@vueuse/core";
@@ -14,8 +12,11 @@ import {
   type RollResult,
   useRollHistory,
 } from "../composables/useRollHistory";
+import { useNotesModal } from "../composables/useNotesModal";
+import { useTooltip } from "../composables/useTooltip";
 import type { Die } from "../Config";
 import BaseModal from "./BaseModal.vue";
+import DieResultDisplay from "./DieResultDisplay.vue";
 import JourneyTabs from "./JourneyTabs.vue";
 
 const { currentJourney, journeyList, setCurrentJourney } = useJourneyStorage();
@@ -25,7 +26,7 @@ const { addHistorySession } = useRollHistory();
 let currentSessionRolls: RollResult[] = [];
 let isInSession = false;
 
-const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
+const { tooltip } = useTooltip();
 
 const resultMap = useLocalStorage<Map<string, number[]>>(
   "dice-roller-results",
@@ -426,19 +427,7 @@ const changeJourney = (id: string) => {
 };
 
 // Notes modal state
-const notesModalOpen = ref(false);
-const notesModalContent = ref("");
-const notesModalTitle = ref("");
-
-const openNotesModal = (name: string, notes: string | undefined) => {
-  notesModalTitle.value = name || "Unnamed Roll";
-  notesModalContent.value = notes || "";
-  notesModalOpen.value = true;
-};
-
-const closeNotesModal = () => {
-  notesModalOpen.value = false;
-};
+const { notesModalOpen, notesModalTitle, notesModalContent, openNotesModal, closeNotesModal } = useNotesModal();
 </script>
 
 <template>
@@ -455,7 +444,7 @@ const closeNotesModal = () => {
     <button
       @click="triggerJourney()"
       class="mb-6 px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg transition-colors cursor-pointer"
-      v-tooltip.bottom="{ value: 'Roll all starter dice in this scenario and any follow up rolls', disabled: !tooltipsEnabled }"
+      v-tooltip.bottom="tooltip('Roll all starter dice in this scenario and any follow up rolls')"
     >
       Roll All
     </button>
@@ -494,14 +483,14 @@ const closeNotesModal = () => {
                   v-if="roll.notes"
                   @click="openNotesModal(roll.name, roll.notes)"
                   class="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-300 hover:text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
-                  v-tooltip.bottom="{ value: 'View notes', disabled: !tooltipsEnabled }"
+                  v-tooltip.bottom="tooltip('View notes')"
                 >
                   <i class="pi pi-file-edit text-xs"></i>
                 </button>
                 <button
                   @click="triggerRoll(seqIndex, roll.id, completedRollIds.has(seqKey(seqIndex, roll.id)))"
                   class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded shadow-lg transition-colors cursor-pointer"
-                  v-tooltip.bottom="{ value: (completedRollIds.has(seqKey(seqIndex, roll.id)) ? 'Reroll' : 'Roll') + ' this die and any follow up rolls', disabled: !tooltipsEnabled }"
+                  v-tooltip.bottom="tooltip((completedRollIds.has(seqKey(seqIndex, roll.id)) ? 'Reroll' : 'Roll') + ' this die and any follow up rolls')"
                 >
                   {{ completedRollIds.has(seqKey(seqIndex, roll.id)) ? "Reroll" : "Roll" }}
                 </button>
@@ -538,7 +527,7 @@ const closeNotesModal = () => {
                   <button
                     @click="rollDice(seqIndex, die.id)"
                     class="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded shadow-lg transition-colors text-sm cursor-pointer"
-                    v-tooltip.bottom="{ value: 'Reroll this die without triggering any follow up rolls', disabled: !tooltipsEnabled }"
+                    v-tooltip.bottom="tooltip('Reroll this die without triggering any follow up rolls')"
                   >
                     🎲
                   </button>
@@ -550,66 +539,19 @@ const closeNotesModal = () => {
                 </p>
 
                 <!-- Results -->
-                <div v-if="hasResult(seqIndex, die.id)" class="space-y-2">
-                  <!-- Individual rolls -->
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="(result, index) in getResults(seqIndex, die.id)"
-                      :key="index"
-                      class="inline-flex items-center justify-center w-8 h-8 rounded bg-gray-700 text-white font-bold text-sm"
-                    >
-                      {{ result }}
-                    </span>
-                  </div>
-
-                  <!-- Total -->
-                  <div
-                    class="flex items-center justify-between pt-2 border-t border-gray-700"
-                  >
-                    <span class="text-gray-400 text-sm">Total:</span>
-                    <span
-                      class="font-bold text-lg"
-                      :class="
-                        die.mode === 'range'
-                          ? (getMatchingRanges(seqIndex, die.id).length > 0 ? 'text-purple-400' : 'text-gray-400')
-                          : getResultSuccess(seqIndex, die.id) ? 'text-green-400' : 'text-red-400'
-                      "
-                    >
-                      {{ getResultTotal(seqIndex, die.id) }}
-                    </span>
-                  </div>
-
-                  <!-- Result message - Threshold mode -->
-                  <template v-if="die.mode !== 'range'">
-                    <div
-                      v-if="getResultSuccess(seqIndex, die.id) && die.onSuccess?.message"
-                      class="mt-2 p-2 bg-green-900/50 border border-green-700 rounded text-green-300 text-sm"
-                    >
-                      {{ die.onSuccess.message }}
-                    </div>
-                    <div
-                      v-else-if="!getResultSuccess(seqIndex, die.id) && die.onFailure?.message"
-                      class="mt-2 p-2 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm"
-                    >
-                      {{ die.onFailure.message }}
-                    </div>
-                  </template>
-
-                  <!-- Result messages - Range mode (show all matching ranges) -->
-                  <template v-else-if="die.mode === 'range'">
-                    <template 
-                      v-for="range in getMatchingRanges(seqIndex, die.id)"
-                      :key="range.id"
-                    >
-                      <div
-                        v-if="range.message"
-                        class="mt-2 p-2 bg-purple-900/50 border border-purple-700 rounded text-purple-300 text-sm"
-                      >
-                        {{ range.message }}
-                      </div>
-                    </template>
-                  </template>
-                </div>
+                <DieResultDisplay
+                  v-if="hasResult(seqIndex, die.id)"
+                  :results="getResults(seqIndex, die.id)"
+                  :total="getResultTotal(seqIndex, die.id)"
+                  :is-success="die.mode === 'range' ? getMatchingRanges(seqIndex, die.id).length > 0 : getResultSuccess(seqIndex, die.id)"
+                  :mode="die.mode === 'range' ? 'range' : 'threshold'"
+                  :message="die.mode !== 'range'
+                    ? (getResultSuccess(seqIndex, die.id) ? die.onSuccess?.message : die.onFailure?.message)
+                    : undefined"
+                  :matched-ranges="die.mode === 'range'
+                    ? getMatchingRanges(seqIndex, die.id).map(r => ({ id: r.id, message: r.message, matched: true }))
+                    : undefined"
+                />
 
                 <!-- Not rolled yet -->
                 <div v-else class="text-gray-500 text-sm italic">

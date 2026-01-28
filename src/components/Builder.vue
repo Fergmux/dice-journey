@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import {
   computed,
-  inject,
   nextTick,
   onMounted,
   provide,
   ref,
-  type Ref,
   useTemplateRef,
 } from "vue";
 
 import { useConnectionLines } from "../composables/useConnectionLines";
 import { useJourneyStorage } from "../composables/useJourneyStorage";
+import { useTooltip } from "../composables/useTooltip";
 import DraggableNode from "./DraggableNode.vue";
 import JourneyTabs from "./JourneyTabs.vue";
 
-const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
+const { tooltip } = useTooltip();
 
 const {
   currentJourney,
@@ -289,14 +288,14 @@ function handleContainerClick(event: MouseEvent) {
         <button
           @click="addNode()"
           class="p-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg transition-colors flex items-center cursor-pointer"
-          v-tooltip.bottom="{ value: 'Add a new node', disabled: !tooltipsEnabled }"
+          v-tooltip.bottom="tooltip('Add a new node')"
         >
           <i class="pi pi-plus"></i>
         </button>
         <button
           @click="confirmDeleteJourney"
           class="p-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg shadow-lg transition-colors flex items-center cursor-pointer"
-          v-tooltip.bottom="{ value: 'Delete this scenario', disabled: !tooltipsEnabled }"
+          v-tooltip.bottom="tooltip('Delete this scenario')"
         >
           <i class="pi pi-trash"></i>
         </button>

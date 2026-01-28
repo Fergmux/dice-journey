@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, type Ref } from "vue";
+import { useTooltip } from "../composables/useTooltip";
 
 interface Journey {
   id: string;
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   (e: "add"): void;
 }>();
 
-const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
+const { tooltip } = useTooltip();
 </script>
 
 <template>
@@ -47,7 +47,7 @@ const tooltipsEnabled = inject<Ref<boolean>>("tooltipsEnabled", ref(true));
       v-if="showAddButton"
       @click="emit('add')"
       class="p-[6px] bg-gray-700 hover:bg-gray-600 text-green-400 rounded shadow-lg transition-colors text-sm flex items-center gap-1 cursor-pointer"
-      v-tooltip.bottom="{ value: 'Add a new scenario', disabled: !tooltipsEnabled }"
+      v-tooltip.bottom="tooltip('Add a new scenario')"
     >
       <i class="pi pi-plus text-xs"></i>
     </button>
